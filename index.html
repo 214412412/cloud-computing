@@ -669,6 +669,7 @@
             }
             if(isReverse)line.reverse();
             var processed=processLine(line);totalScore+=processed.score;
+            if(isReverse)processed.result.reverse();
             var newLine=[];for(var p=0;p<gridSize;p++)newLine.push(0);
             for(var j=0;j<processed.result.length;j++){
                 var targetPos=isReverse?gridSize-processed.result.length+j:j;
