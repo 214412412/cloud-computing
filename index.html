@@ -452,33 +452,71 @@
     };
 
     var BGM={
-        ctx:null,playing:false,nodes:[],
+        audio:null,playing:false,loading:false,songmid:'002yvwlh16v8Pu',
         start:function(){
-            if(this.playing||!Sound.ctx)return;
-            this.playing=true;this.ctx=Sound.ctx;this.resume();
-            document.getElementById('musicBtn').textContent='🎵';
+            if(this.playing)return;
+            if(this.audio){
+                this.playing=true;
+                this.audio.play().catch(function(){});
+                document.getElementById('musicBtn').textContent='🎵';
+                return;
+            }
+            this.loading=true;
+            document.getElementById('musicBtn').textContent='⏳';
+            this._fetchAndPlay();
         },
-        resume:function(){
-            if(!this.playing||!this.ctx)return;
+        _fetchAndPlay:function(){
+            var self=this;
+            var cbName='bgmCb_'+Date.now();
+            window[cbName]=function(data){
+                delete window[cbName];
+                var s=document.getElementById('bgmScript');if(s)s.remove();
+                try{
+                    var info=data.req_0.data.midurlinfo[0];
+                    var sip=data.req_0.data.sip[0];
+                    var url=sip+info.purl;
+                    if(!info.purl){self._useFallback();return;}
+                    self.audio=new Audio();self.audio.loop=true;self.audio.volume=0.3;
+                    self.audio.src=url;
+                    self.audio.play().then(function(){
+                        self.playing=true;self.loading=false;
+                        document.getElementById('musicBtn').textContent='🎵';
+                    }).catch(function(){self._useFallback();});
+                }catch(e){self._useFallback();}
+            };
+            var params=encodeURIComponent(JSON.stringify({
+                req_0:{module:"vkey.GetVkeyServer",method:"CgiGetVkey",
+                    param:{guid:"358840384",songmid:[this.songmid],songtype:[0],uin:"0",loginflag:1,platform:"20"}},
+                comm:{uin:"0",format:"json",ct:24,cv:0}
+            }));
+            var script=document.createElement('script');script.id='bgmScript';
+            script.src='https://u.y.qq.com/cgi-bin/musicu.fcg?format=jsonp&callback='+cbName+'&data='+params;
+            script.onerror=function(){delete window[cbName];script.remove();self._useFallback();};
+            document.head.appendChild(script);
+        },
+        _useFallback:function(){
+            this.loading=false;Sound.init();Sound.resume();
+            this.playing=true;this._fbCtx=Sound.ctx;
             var self=this;
             function playBeat(){
-                if(!self.playing)return;
-                var now=self.ctx.currentTime;
+                if(!self.playing||!self._fbCtx)return;
+                var now=self._fbCtx.currentTime;
                 [261.6,329.6,392,523.3].forEach(function(f,i){
                     if(!Sound.enabled)return;
-                    var osc=self.ctx.createOscillator(),gain=self.ctx.createGain();
+                    var osc=self._fbCtx.createOscillator(),gain=self._fbCtx.createGain();
                     osc.type='sine';osc.frequency.value=f;
-                    gain.gain.setValueAtTime(0.03,self.ctx.currentTime+i*0.5);
-                    gain.gain.exponentialRampToValueAtTime(0.001,self.ctx.currentTime+i*0.5+0.4);
-                    osc.connect(gain);gain.connect(self.ctx.destination);
+                    gain.gain.setValueAtTime(0.03,self._fbCtx.currentTime+i*0.5);
+                    gain.gain.exponentialRampToValueAtTime(0.001,self._fbCtx.currentTime+i*0.5+0.4);
+                    osc.connect(gain);gain.connect(self._fbCtx.destination);
                     osc.start(now+i*0.5);osc.stop(now+i*0.5+0.5);
                 });
                 self._timer=setTimeout(playBeat,2500);
             }
-            playBeat();
+            playBeat();document.getElementById('musicBtn').textContent='🎵';
         },
         stop:function(){
-            this.playing=false;
+            this.playing=false;this.loading=false;
+            if(this.audio){this.audio.pause();}
             if(this._timer){clearTimeout(this._timer);this._timer=null;}
             document.getElementById('musicBtn').textContent='🔇';
         }
