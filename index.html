@@ -1,1118 +1,310 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>2048 终极版</title>
-    <style>
-        :root {
-            --bg1:#667eea;--bg2:#764ba2;--board-bg:#bbada0;
-            --cell-bg:rgba(238,228,218,0.35);--text-primary:#776e65;
-            --text-light:#f9f6f2;--btn-bg:#8f7a66;--btn-hover:#9f8b77;
-            --score-bg:#bbada0;--score-label:#eee4da;--score-value:#fff;
-            --overlay-bg:rgba(238,228,218,0.73);--modal-bg:#faf8ef;
-            --t2:#eee4da;--t2t:#776e65;--t4:#ede0c8;--t4t:#776e65;
-            --t8:#f2b179;--t8t:#f9f6f2;--t16:#f59563;--t16t:#f9f6f2;
-            --t32:#f67c5f;--t32t:#f9f6f2;--t64:#f65e3b;--t64t:#f9f6f2;
-            --t128:#edcf72;--t128t:#f9f6f2;--t256:#edcc61;--t256t:#f9f6f2;
-            --t512:#edc850;--t512t:#f9f6f2;--t1024:#edc53f;--t1024t:#f9f6f2;
-            --t2048:#edc22e;--t2048t:#f9f6f2;--tsuper:#3c3a32;--tsupert:#f9f6f2;
-        }
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{
-            font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
-            min-height:100vh;display:flex;flex-direction:column;
-            align-items:center;justify-content:center;padding:10px;
-            overflow-x:hidden;position:relative;
-            background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);
-        }
-        body::before{
-            content:'';position:fixed;top:0;left:0;right:0;bottom:0;
-            background:url('https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=beautiful%20abstract%20watercolor%20gradient%20background%20for%202048%20puzzle%20game%2C%20soft%20pastel%20purple%20and%20gold%20tones%2C%20elegant%20clean%20design%2C%20subtle%20geometric%20patterns&image_size=landscape_16_9') center/cover no-repeat;
-            opacity:0.15;z-index:0;pointer-events:none;
-        }
-        .game-wrapper{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:10px;max-width:500px;width:100%;}
-        .header-row{display:flex;align-items:center;gap:12px;width:100%;max-width:440px;justify-content:center;}
-        h1{font-size:3rem;font-weight:900;color:var(--text-light);text-shadow:2px 2px 8px rgba(0,0,0,0.3);letter-spacing:4px;}
-        .combo-badge{
-            font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg,#f39c12,#e74c3c);
-            padding:4px 12px;border-radius:20px;opacity:0;transition:all 0.3s;
-            transform:scale(0.5);
-        }
-        .combo-badge.show{opacity:1;transform:scale(1);}
-        .score-area{display:flex;gap:8px;width:100%;max-width:440px;}
-        .score-box{flex:1;background:var(--score-bg);border-radius:8px;padding:6px 12px;text-align:center;position:relative;overflow:hidden;}
-        .score-label{font-size:10px;color:var(--score-label);text-transform:uppercase;font-weight:700;letter-spacing:1px;}
-        .score-value{font-size:22px;font-weight:700;color:var(--score-value);transition:transform 0.15s;}
-        .score-value.bump{animation:scoreBump 0.3s ease;}
-        @keyframes scoreBump{0%{transform:scale(1);}50%{transform:scale(1.3);}100%{transform:scale(1);}}
-        .progress-wrap{width:100%;max-width:440px;height:6px;background:rgba(0,0,0,0.15);border-radius:3px;overflow:hidden;}
-        .progress-bar{height:100%;background:linear-gradient(90deg,#f39c12,#e74c3c,#9b59b6);border-radius:3px;transition:width 0.4s ease;width:0%;}
-        .control-bar{display:flex;gap:6px;width:100%;max-width:440px;flex-wrap:wrap;align-items:center;justify-content:center;}
-        .btn{
-            background:var(--btn-bg);color:#fff;border:none;padding:7px 14px;border-radius:6px;
-            font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;
-            user-select:none;-webkit-tap-highlight-color:transparent;
-        }
-        .btn:hover{background:var(--btn-hover);transform:translateY(-1px);}
-        .btn:active{transform:translateY(0);}
-        .btn.active{background:#e74c3c;}
-        .btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
-        .btn-icon{font-size:16px;padding:7px 10px;}
-        select.btn{
-            appearance:none;-webkit-appearance:none;padding-right:26px;
-            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='white' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-            background-repeat:no-repeat;background-position:right 6px center;
-        }
-        .board-container{position:relative;border-radius:8px;overflow:visible;box-shadow:0 10px 40px rgba(0,0,0,0.3);}
-        .board-container.shake{animation:boardShake 0.4s ease;}
-        @keyframes boardShake{
-            0%,100%{transform:translateX(0);}
-            20%{transform:translateX(-8px);}
-            40%{transform:translateX(8px);}
-            60%{transform:translateX(-4px);}
-            80%{transform:translateX(4px);}
-        }
-        .game-board{background:var(--board-bg);border-radius:8px;position:relative;touch-action:none;overflow:hidden;}
-        .cell-bg{background:var(--cell-bg);border-radius:6px;}
-        .tile{
-            position:absolute;border-radius:6px;display:flex;align-items:center;justify-content:center;
-            font-weight:700;transition:left 0.12s ease,top 0.12s ease;z-index:2;
-        }
-        .tile-new{animation:tileAppear 0.2s ease;}
-        .tile-merged{animation:tilePop 0.2s ease;z-index:3;}
-        @keyframes tileAppear{0%{opacity:0;transform:scale(0);}100%{opacity:1;transform:scale(1);}}
-        @keyframes tilePop{0%{transform:scale(1);}50%{transform:scale(1.25);}100%{transform:scale(1);}}
-        .tile-2{background:var(--t2);color:var(--t2t);}
-        .tile-4{background:var(--t4);color:var(--t4t);}
-        .tile-8{background:var(--t8);color:var(--t8t);}
-        .tile-16{background:var(--t16);color:var(--t16t);}
-        .tile-32{background:var(--t32);color:var(--t32t);}
-        .tile-64{background:var(--t64);color:var(--t64t);}
-        .tile-128{background:var(--t128);color:var(--t128t);}
-        .tile-256{background:var(--t256);color:var(--t256t);}
-        .tile-512{background:var(--t512);color:var(--t512t);}
-        .tile-1024{background:var(--t1024);color:var(--t1024t);}
-        .tile-2048{background:var(--t2048);color:var(--t2048t);box-shadow:0 0 30px 10px rgba(237,194,46,0.4);}
-        .tile-super{background:var(--tsuper);color:var(--tsupert);}
-        .tile.skin-emoji{font-size:inherit !important;}
-        .tile.skin-gradient .tile-inner{display:none;}
-        .floating-score{position:absolute;font-size:18px;font-weight:700;color:var(--text-primary);z-index:10;pointer-events:none;animation:floatUp 0.8s ease forwards;}
-        @keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-60px) scale(1.5);}}
-        .particle{position:absolute;border-radius:50%;pointer-events:none;z-index:15;}
-        @keyframes particleFly{
-            0%{opacity:1;transform:translate(0,0) scale(1);}
-            100%{opacity:0;transform:translate(var(--px),var(--py)) scale(0);}
-        }
-        .overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;border-radius:8px;animation:overlayIn 0.4s ease;}
-        .overlay-gameover{background:var(--overlay-bg);}
-        .overlay-pause{background:rgba(255,255,255,0.85);backdrop-filter:blur(4px);}
-        .overlay-win{background:rgba(237,194,46,0.65);}
-        @keyframes overlayIn{from{opacity:0;}to{opacity:1;}}
-        .overlay-title{font-size:38px;font-weight:900;color:var(--text-primary);margin-bottom:8px;}
-        .overlay-subtitle{font-size:18px;color:var(--text-primary);margin-bottom:16px;text-align:center;padding:0 20px;}
-        .overlay-img{width:100px;height:100px;border-radius:12px;margin-bottom:12px;object-fit:cover;animation:trophyBounce 0.6s ease;}
-        @keyframes trophyBounce{0%{transform:scale(0) rotate(-10deg);}60%{transform:scale(1.2) rotate(5deg);}100%{transform:scale(1) rotate(0deg);}}
-        .overlay .btn{font-size:15px;padding:10px 24px;margin:4px;}
-        .hidden{display:none !important;}
-        .bottom-bar{display:flex;gap:6px;width:100%;max-width:440px;justify-content:center;flex-wrap:wrap;}
-        .modal-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:100;display:flex;align-items:center;justify-content:center;animation:overlayIn 0.2s ease;}
-        .modal{background:var(--modal-bg);border-radius:12px;padding:20px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
-        .modal h2{font-size:20px;color:var(--text-primary);margin-bottom:14px;text-align:center;}
-        .modal-close{float:right;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-primary);padding:0 4px;}
-        .leaderboard-list{list-style:none;}
-        .leaderboard-item{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:6px;margin-bottom:3px;font-size:13px;}
-        .leaderboard-item:nth-child(1){background:#ffd700;font-weight:700;}
-        .leaderboard-item:nth-child(2){background:#c0c0c0;font-weight:700;}
-        .leaderboard-item:nth-child(3){background:#cd7f32;font-weight:700;}
-        .leaderboard-item:nth-child(n+4){background:#eee4da;}
-        .lb-rank{width:28px;font-weight:700;}.lb-score{font-weight:700;color:var(--text-primary);}.lb-info{font-size:11px;color:#999;}
-        .replay-status{text-align:center;padding:16px;font-size:15px;color:var(--text-primary);}
-        .replay-progress{width:100%;height:6px;background:#eee4da;border-radius:3px;margin-top:10px;overflow:hidden;}
-        .replay-progress-bar{height:100%;background:var(--btn-bg);border-radius:3px;transition:width 0.3s;}
-        .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
-        .stat-card{background:#eee4da;border-radius:8px;padding:10px;text-align:center;}
-        .stat-card .stat-num{font-size:22px;font-weight:700;color:var(--text-primary);}
-        .stat-card .stat-lbl{font-size:11px;color:#999;margin-top:2px;}
-        .achievement-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
-        .achievement{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:#eee4da;}
-        .achievement.locked{opacity:0.5;filter:grayscale(1);}
-        .ach-icon{font-size:24px;}.ach-name{font-weight:700;font-size:13px;color:var(--text-primary);}.ach-desc{font-size:11px;color:#999;}
-        .ach-toast{
-            position:fixed;top:20px;left:50%;transform:translateX(-50%);
-            background:linear-gradient(135deg,#f39c12,#e74c3c);color:#fff;
-            padding:10px 24px;border-radius:8px;font-weight:700;font-size:14px;
-            z-index:200;animation:toastIn 0.4s ease,toastOut 0.4s ease 2.6s forwards;
-            box-shadow:0 4px 20px rgba(0,0,0,0.3);
-        }
-        @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-20px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
-        @keyframes toastOut{from{opacity:1;}to{opacity:0;transform:translateX(-50%) translateY(-20px);}}
-        .timer-display{font-size:14px;color:var(--text-light);font-weight:700;background:rgba(0,0,0,0.2);padding:4px 12px;border-radius:6px;}
-        .timer-display.danger{color:#e74c3c;animation:timerPulse 0.5s ease infinite alternate;}
-        @keyframes timerPulse{from{opacity:1;}to{opacity:0.5;}}
-        .game-tip{font-size:11px;color:rgba(255,255,255,0.6);text-align:center;}
-        .info-row{display:flex;gap:8px;align-items:center;justify-content:center;width:100%;max-width:440px;}
-        @media(max-width:480px){
-            h1{font-size:2.2rem;}
-            .score-area,.control-bar,.bottom-bar,.info-row{max-width:95vw;}
-            .btn{padding:6px 10px;font-size:12px;}
-            .overlay-title{font-size:28px;}
-            .stat-grid{grid-template-columns:1fr 1fr;}
-        }
-    </style>
-</head>
-<body>
-    <div class="game-wrapper">
-        <div class="header-row">
-            <h1>2048</h1>
-            <div class="combo-badge" id="comboBadge">COMBO x2</div>
-        </div>
 
-        <div class="score-area">
-            <div class="score-box">
-                <div class="score-label">分数</div>
-                <div class="score-value" id="score">0</div>
-            </div>
-            <div class="score-box">
-                <div class="score-label">最高分</div>
-                <div class="score-value" id="bestScore">0</div>
-            </div>
-            <div class="score-box">
-                <div class="score-label">步数</div>
-                <div class="score-value" id="moveCount" style="font-size:18px;">0</div>
-            </div>
-        </div>
-
-        <div class="progress-wrap">
-            <div class="progress-bar" id="progressBar"></div>
-        </div>
-
-        <div class="control-bar">
-            <button class="btn" id="startBtn" onclick="startGame()">开始</button>
-            <button class="btn" id="pauseBtn" onclick="togglePause()" disabled>暂停</button>
-            <button class="btn" id="undoBtn" onclick="undoMove()" disabled>↩ 撤销</button>
-            <button class="btn" id="restartBtn" onclick="restartGame()" disabled>重开</button>
-            <select class="btn" id="diffSelect" onchange="changeDifficulty(this.value)">
-                <option value="3">困难 3×3</option>
-                <option value="4" selected>普通 4×4</option>
-                <option value="5">简单 5×5</option>
-                <option value="6">休闲 6×6</option>
-            </select>
-            <select class="btn" id="themeSelect" onchange="changeTheme(this.value)">
-                <option value="classic">经典</option>
-                <option value="ocean">海洋</option>
-                <option value="forest">森林</option>
-                <option value="neon">霓虹</option>
-                <option value="candy">糖果</option>
-            </select>
-            <select class="btn" id="skinSelect" onchange="changeSkin(this.value)">
-                <option value="number">数字</option>
-                <option value="emoji">表情</option>
-                <option value="gradient">渐变</option>
-            </select>
-        </div>
-
-        <div class="info-row">
-            <div class="timer-display" id="timerDisplay">00:00</div>
-            <button class="btn" id="timedBtn" onclick="toggleTimedMode()">⏱ 限时</button>
-        </div>
-
-        <div class="board-container" id="boardContainer">
-            <div class="game-board" id="gameBoard"></div>
-            <div class="overlay overlay-pause hidden" id="pauseOverlay">
-                <div class="overlay-title">⏸ 暂停中</div>
-                <div class="overlay-subtitle">点击继续按钮恢复游戏</div>
-                <button class="btn" onclick="togglePause()">继续游戏</button>
-            </div>
-            <div class="overlay overlay-gameover hidden" id="gameoverOverlay">
-                <div class="overlay-title">游戏结束</div>
-                <div class="overlay-subtitle" id="finalScore">最终分数: 0</div>
-                <button class="btn" onclick="restartGame()">再玩一次</button>
-                <button class="btn" onclick="shareScore()">📋 复制分数</button>
-            </div>
-            <div class="overlay overlay-win hidden" id="winOverlay">
-                <img class="overlay-img" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=golden%20trophy%20celebration%20with%20sparkles%20and%20confetti%2C%20game%20achievement%20award%2C%20clean%20vector%20illustration%20style%2C%20white%20background&image_size=square" alt="恭喜">
-                <div class="overlay-title">🎉 恭喜!</div>
-                <div class="overlay-subtitle">你达到了 2048!</div>
-                <button class="btn" onclick="continueGame()">继续挑战</button>
-                <button class="btn" onclick="restartGame()">重新开始</button>
-            </div>
-        </div>
-
-        <div class="game-tip">方向键/WASD移动 | Z撤销 | P暂停 | R重开</div>
-
-        <div class="bottom-bar">
-            <button class="btn" onclick="showLeaderboard()">🏆 排行</button>
-            <button class="btn" id="replayBtn" onclick="startReplay()" disabled>🔄 回放</button>
-            <button class="btn" onclick="showStats()">📊 统计</button>
-            <button class="btn" onclick="showAchievements()">🏅 成就</button>
-            <button class="btn" onclick="showHelp()">❓ 帮助</button>
-            <button class="btn btn-icon" id="soundBtn" onclick="toggleSound()">🔊</button>
-            <button class="btn btn-icon" id="musicBtn" onclick="toggleMusic()">🎵</button>
-        </div>
-    </div>
-
-    <div class="modal-backdrop hidden" id="leaderboardModal" onclick="closeModal('leaderboardModal',event)">
-        <div class="modal" onclick="event.stopPropagation()">
-            <button class="modal-close" onclick="document.getElementById('leaderboardModal').classList.add('hidden')">&times;</button>
-            <h2>🏆 排行榜</h2>
-            <ul class="leaderboard-list" id="leaderboardList"></ul>
-            <div style="text-align:center;margin-top:10px;"><button class="btn" onclick="clearLeaderboard()">清除记录</button></div>
-        </div>
-    </div>
-
-    <div class="modal-backdrop hidden" id="replayModal" onclick="closeModal('replayModal',event)">
-        <div class="modal" onclick="event.stopPropagation()">
-            <button class="modal-close" onclick="stopReplay()">&times;</button>
-            <h2>🔄 操作回放</h2>
-            <div class="replay-status" id="replayStatus">准备回放...</div>
-            <div class="replay-progress"><div class="replay-progress-bar" id="replayProgress" style="width:0%"></div></div>
-        </div>
-    </div>
-
-    <div class="modal-backdrop hidden" id="statsModal" onclick="closeModal('statsModal',event)">
-        <div class="modal" onclick="event.stopPropagation()">
-            <button class="modal-close" onclick="document.getElementById('statsModal').classList.add('hidden')">&times;</button>
-            <h2>📊 游戏统计</h2>
-            <div class="stat-grid" id="statGrid"></div>
-        </div>
-    </div>
-
-    <div class="modal-backdrop hidden" id="achModal" onclick="closeModal('achModal',event)">
-        <div class="modal" onclick="event.stopPropagation()">
-            <button class="modal-close" onclick="document.getElementById('achModal').classList.add('hidden')">&times;</button>
-            <h2>🏅 成就</h2>
-            <div class="achievement-list" id="achList"></div>
-        </div>
-    </div>
-
-    <div class="modal-backdrop hidden" id="helpModal" onclick="closeModal('helpModal',event)">
-        <div class="modal" onclick="event.stopPropagation()">
-            <button class="modal-close" onclick="document.getElementById('helpModal').classList.add('hidden')">&times;</button>
-            <h2>❓ 操作帮助</h2>
-            <div style="font-size:13px;color:var(--text-primary);line-height:1.8;">
-                <b>键盘操作：</b><br>
-                ↑↓←→ / WASD — 移动方块<br>
-                Z / Ctrl+Z — 撤销一步<br>
-                P — 暂停/继续<br>
-                R — 重新开始<br><br>
-                <b>触屏操作：</b><br>
-                在棋盘上滑动 — 移动方块<br><br>
-                <b>游戏规则：</b><br>
-                相同数字的方块碰撞会合并，合并后分数增加。<br>
-                目标是合成 2048 方块！<br><br>
-                <b>连击系统：</b><br>
-                连续合并可获得连击加成，分数翻倍！<br><br>
-                <b>限时模式：</b><br>
-                点击「⏱ 限时」开启 3 分钟挑战！
-            </div>
-        </div>
-    </div>
-
-<script>
-(function(){
-    var gridSize=4,grid=[],score=0,bestScore=0,isPlaying=false,isPaused=false;
-    var isGameOver=false,hasWon=false,keepPlaying=false;
-    var moveHistory=[],initialState=null,isReplaying=false,replayTimer=null,animating=false;
-    var undoStack=[],MAX_UNDO=20;
-    var comboCount=0,comboTimer=null;
-    var currentSkin='number';
-    var timedMode=false,timedSeconds=180,timedInterval=null,timedRemaining=0;
-    var playStartTime=0,totalPlayTime=0;
-    var highestTileEver=parseInt(localStorage.getItem('2048-highest-tile'))||0;
-
-    var EMOJI_MAP={2:'🌱',4:'🌿',8:'🌸',16:'🌻',32:'🌹',64:'🔥',128:'⭐',256:'🌙',512:'💎',1024:'👑',2048:'🏆'};
-    var GRADIENT_MAP={
-        2:'linear-gradient(135deg,#eee4da,#d6cec0)',4:'linear-gradient(135deg,#ede0c8,#d6c8a8)',
-        8:'linear-gradient(135deg,#f2b179,#e09860)',16:'linear-gradient(135deg,#f59563,#e07840)',
-        32:'linear-gradient(135deg,#f67c5f,#e05830)',64:'linear-gradient(135deg,#f65e3b,#d43818)',
-        128:'linear-gradient(135deg,#edcf72,#dbb840)',256:'linear-gradient(135deg,#edcc61,#dbb030)',
-        512:'linear-gradient(135deg,#edc850,#dbb020)',1024:'linear-gradient(135deg,#edc53f,#dba810)',
-        2048:'linear-gradient(135deg,#edc22e,#dba000)'
-    };
-
-    var ACHIEVEMENTS=[
-        {id:'first_merge',icon:'🎯',name:'初次合并',desc:'完成第一次合并',check:function(s){return s.totalMerges>=1;}},
-        {id:'reach_128',icon:'⭐',name:'星辰',desc:'合成128',check:function(s){return s.highestTile>=128;}},
-        {id:'reach_512',icon:'💎',name:'钻石',desc:'合成512',check:function(s){return s.highestTile>=512;}},
-        {id:'reach_1024',icon:'👑',name:'王者',desc:'合成1024',check:function(s){return s.highestTile>=1024;}},
-        {id:'reach_2048',icon:'🏆',name:'传奇',desc:'合成2048',check:function(s){return s.highestTile>=2048;}},
-        {id:'combo_3',icon:'🔥',name:'三连击',desc:'达成3连击',check:function(s){return s.maxCombo>=3;}},
-        {id:'combo_5',icon:'💥',name:'五连击',desc:'达成5连击',check:function(s){return s.maxCombo>=5;}},
-        {id:'score_1k',icon:'🥉',name:'千分',desc:'单局得分1000',check:function(s){return s.score>=1000;}},
-        {id:'score_5k',icon:'🥈',name:'五千分',desc:'单局得分5000',check:function(s){return s.score>=5000;}},
-        {id:'score_10k',icon:'🥇',name:'万分',desc:'单局得分10000',check:function(s){return s.score>=10000;}},
-        {id:'games_10',icon:'🎮',name:'老玩家',desc:'完成10局游戏',check:function(s){return s.totalGames>=10;}},
-        {id:'speed_60',icon:'⚡',name:'速战速决',desc:'限时模式60秒内达2048',check:function(s){return s.speedWin;}}
-    ];
-
-    var boardEl=document.getElementById('gameBoard');
-    var scoreEl=document.getElementById('score'),bestScoreEl=document.getElementById('bestScore');
-    var moveCountEl=document.getElementById('moveCount');
-    var pauseOverlay=document.getElementById('pauseOverlay');
-    var gameoverOverlay=document.getElementById('gameoverOverlay');
-    var winOverlay=document.getElementById('winOverlay');
-    var finalScoreEl=document.getElementById('finalScore');
-    var startBtn=document.getElementById('startBtn'),pauseBtn=document.getElementById('pauseBtn');
-    var restartBtn=document.getElementById('restartBtn'),replayBtn=document.getElementById('replayBtn');
-    var undoBtn=document.getElementById('undoBtn');
-    var comboBadge=document.getElementById('comboBadge');
-    var progressBar=document.getElementById('progressBar');
-    var timerDisplay=document.getElementById('timerDisplay');
-    var boardContainer=document.getElementById('boardContainer');
-
-    var PADDING=10;
-
-    var THEMES={
-        classic:{
-            '--bg1':'#667eea','--bg2':'#764ba2','--board-bg':'#bbada0',
-            '--cell-bg':'rgba(238,228,218,0.35)','--text-primary':'#776e65',
-            '--text-light':'#f9f6f2','--btn-bg':'#8f7a66','--btn-hover':'#9f8b77',
-            '--score-bg':'#bbada0','--score-label':'#eee4da','--score-value':'#fff',
-            '--overlay-bg':'rgba(238,228,218,0.73)',
-            '--t2':'#eee4da','--t2t':'#776e65','--t4':'#ede0c8','--t4t':'#776e65',
-            '--t8':'#f2b179','--t8t':'#f9f6f2','--t16':'#f59563','--t16t':'#f9f6f2',
-            '--t32':'#f67c5f','--t32t':'#f9f6f2','--t64':'#f65e3b','--t64t':'#f9f6f2',
-            '--t128':'#edcf72','--t128t':'#f9f6f2','--t256':'#edcc61','--t256t':'#f9f6f2',
-            '--t512':'#edc850','--t512t':'#f9f6f2','--t1024':'#edc53f','--t1024t':'#f9f6f2',
-            '--t2048':'#edc22e','--t2048t':'#f9f6f2','--tsuper':'#3c3a32','--tsupert':'#f9f6f2'
-        },
-        ocean:{
-            '--bg1':'#0f2027','--bg2':'#2c5364','--board-bg':'#1a3a4a',
-            '--cell-bg':'rgba(100,180,220,0.2)','--text-primary':'#e0f0ff',
-            '--text-light':'#e0f0ff','--btn-bg':'#2980b9','--btn-hover':'#3498db',
-            '--score-bg':'#1a3a4a','--score-label':'#7ec8e3','--score-value':'#e0f0ff',
-            '--overlay-bg':'rgba(26,58,74,0.85)',
-            '--t2':'#a8d8ea','--t2t':'#1a3a4a','--t4':'#7ec8e3','--t4t':'#1a3a4a',
-            '--t8':'#4db8d8','--t8t':'#fff','--t16':'#3498db','--t16t':'#fff',
-            '--t32':'#2980b9','--t32t':'#fff','--t64':'#1a5276','--t64t':'#fff',
-            '--t128':'#00b4d8','--t128t':'#fff','--t256':'#0096c7','--t256t':'#fff',
-            '--t512':'#0077b6','--t512t':'#fff','--t1024':'#005f99','--t1024t':'#fff',
-            '--t2048':'#ffd700','--t2048t':'#1a3a4a','--tsuper':'#023e8a','--tsupert':'#fff'
-        },
-        forest:{
-            '--bg1':'#134e5e','--bg2':'#71b280','--board-bg':'#2d5a3d',
-            '--cell-bg':'rgba(113,178,128,0.2)','--text-primary':'#e8f5e9',
-            '--text-light':'#e8f5e9','--btn-bg':'#388e3c','--btn-hover':'#43a047',
-            '--score-bg':'#2d5a3d','--score-label':'#a5d6a7','--score-value':'#e8f5e9',
-            '--overlay-bg':'rgba(45,90,61,0.85)',
-            '--t2':'#c8e6c9','--t2t':'#2d5a3d','--t4':'#a5d6a7','--t4t':'#2d5a3d',
-            '--t8':'#81c784','--t8t':'#fff','--t16':'#66bb6a','--t16t':'#fff',
-            '--t32':'#4caf50','--t32t':'#fff','--t64':'#388e3c','--t64t':'#fff',
-            '--t128':'#2e7d32','--t128t':'#fff','--t256':'#1b5e20','--t256t':'#fff',
-            '--t512':'#aed581','--t512t':'#2d5a3d','--t1024':'#9ccc65','--t1024t':'#2d5a3d',
-            '--t2048':'#ffd700','--t2048t':'#2d5a3d','--tsuper':'#1a3a1a','--tsupert':'#e8f5e9'
-        },
-        neon:{
-            '--bg1':'#0a0a0a','--bg2':'#1a1a2e','--board-bg':'#16213e',
-            '--cell-bg':'rgba(0,255,255,0.08)','--text-primary':'#e0e0e0',
-            '--text-light':'#e0e0e0','--btn-bg':'#e94560','--btn-hover':'#ff6b6b',
-            '--score-bg':'#16213e','--score-label':'#0ff','--score-value':'#0ff',
-            '--overlay-bg':'rgba(22,33,62,0.9)',
-            '--t2':'#1a1a2e','--t2t':'#0ff','--t4':'#16213e','--t4t':'#0ff',
-            '--t8':'#0f3460','--t8t':'#0ff','--t16':'#533483','--t16t':'#0ff',
-            '--t32':'#e94560','--t32t':'#fff','--t64':'#ff6b6b','--t64t':'#fff',
-            '--t128':'#ffd700','--t128t':'#0a0a0a','--t256':'#0ff','--t256t':'#0a0a0a',
-            '--t512':'#ff00ff','--t512t':'#fff','--t1024':'#00ff88','--t1024t':'#0a0a0a',
-            '--t2048':'#ffd700','--t2048t':'#0a0a0a','--tsuper':'#0a0a0a','--tsupert':'#0ff'
-        },
-        candy:{
-            '--bg1':'#ff9a9e','--bg2':'#fecfef','--board-bg':'#f8bbd0',
-            '--cell-bg':'rgba(255,255,255,0.4)','--text-primary':'#880e4f',
-            '--text-light':'#fff','--btn-bg':'#e91e63','--btn-hover':'#f06292',
-            '--score-bg':'#f8bbd0','--score-label':'#880e4f','--score-value':'#880e4f',
-            '--overlay-bg':'rgba(248,187,208,0.85)',
-            '--t2':'#fce4ec','--t2t':'#880e4f','--t4':'#f8bbd0','--t4t':'#880e4f',
-            '--t8':'#f48fb1','--t8t':'#fff','--t16':'#f06292','--t16t':'#fff',
-            '--t32':'#ec407a','--t32t':'#fff','--t64':'#e91e63','--t64t':'#fff',
-            '--t128':'#ce93d8','--t128t':'#fff','--t256':'#ba68c8','--t256t':'#fff',
-            '--t512':'#ab47bc','--t512t':'#fff','--t1024':'#9c27b0','--t1024t':'#fff',
-            '--t2048':'#ffd700','--t2048t':'#880e4f','--tsuper':'#4a148c','--tsupert':'#fff'
-        }
-    };
-
-    var Sound={
-        ctx:null,enabled:true,
-        init:function(){try{this.ctx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}},
-        resume:function(){if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume();},
-        playTone:function(freq,dur,type,vol){
-            if(!this.enabled||!this.ctx)return;this.resume();
-            var osc=this.ctx.createOscillator(),gain=this.ctx.createGain();
-            osc.type=type||'sine';osc.frequency.value=freq;
-            gain.gain.setValueAtTime(vol||0.12,this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001,this.ctx.currentTime+dur);
-            osc.connect(gain);gain.connect(this.ctx.destination);osc.start();osc.stop(this.ctx.currentTime+dur);
-        },
-        move:function(){this.playTone(400,0.05,'sine',0.08);},
-        merge:function(){this.playTone(523,0.08,'sine',0.12);var s=this;setTimeout(function(){s.playTone(659,0.08,'sine',0.1);},50);},
-        combo:function(){this.playTone(784,0.1,'sine',0.15);this.playTone(988,0.1,'sine',0.12);},
-        gameover:function(){var s=this;[400,350,300,250].forEach(function(f,i){setTimeout(function(){s.playTone(f,0.2,'sine',0.1);},i*100);});},
-        win:function(){var s=this;[523,659,784,1047].forEach(function(f,i){setTimeout(function(){s.playTone(f,0.12,'sine',0.12);},i*80);});},
-        undo:function(){this.playTone(300,0.06,'sine',0.08);}
-    };
-
-    var BGM={
-        audio:null,playing:false,loading:false,songmid:'002yvwlh16v8Pu',
-        start:function(){
-            if(this.playing)return;
-            if(this.audio){
-                this.playing=true;
-                this.audio.play().catch(function(){});
-                document.getElementById('musicBtn').textContent='🎵';
-                return;
-            }
-            this.loading=true;
-            document.getElementById('musicBtn').textContent='⏳';
-            this._fetchAndPlay();
-        },
-        _fetchAndPlay:function(){
-            var self=this;
-            var cbName='bgmCb_'+Date.now();
-            window[cbName]=function(data){
-                delete window[cbName];
-                var s=document.getElementById('bgmScript');if(s)s.remove();
-                try{
-                    var info=data.req_0.data.midurlinfo[0];
-                    var sip=data.req_0.data.sip[0];
-                    var url=sip+info.purl;
-                    if(!info.purl){self._useFallback();return;}
-                    self.audio=new Audio();self.audio.loop=true;self.audio.volume=0.3;
-                    self.audio.src=url;
-                    self.audio.play().then(function(){
-                        self.playing=true;self.loading=false;
-                        document.getElementById('musicBtn').textContent='🎵';
-                    }).catch(function(){self._useFallback();});
-                }catch(e){self._useFallback();}
-            };
-            var params=encodeURIComponent(JSON.stringify({
-                req_0:{module:"vkey.GetVkeyServer",method:"CgiGetVkey",
-                    param:{guid:"358840384",songmid:[this.songmid],songtype:[0],uin:"0",loginflag:1,platform:"20"}},
-                comm:{uin:"0",format:"json",ct:24,cv:0}
-            }));
-            var script=document.createElement('script');script.id='bgmScript';
-            script.src='https://u.y.qq.com/cgi-bin/musicu.fcg?format=jsonp&callback='+cbName+'&data='+params;
-            script.onerror=function(){delete window[cbName];script.remove();self._useFallback();};
-            document.head.appendChild(script);
-        },
-        _useFallback:function(){
-            this.loading=false;Sound.init();Sound.resume();
-            this.playing=true;this._fbCtx=Sound.ctx;
-            var self=this;
-            function playBeat(){
-                if(!self.playing||!self._fbCtx)return;
-                var now=self._fbCtx.currentTime;
-                [261.6,329.6,392,523.3].forEach(function(f,i){
-                    if(!Sound.enabled)return;
-                    var osc=self._fbCtx.createOscillator(),gain=self._fbCtx.createGain();
-                    osc.type='sine';osc.frequency.value=f;
-                    gain.gain.setValueAtTime(0.03,self._fbCtx.currentTime+i*0.5);
-                    gain.gain.exponentialRampToValueAtTime(0.001,self._fbCtx.currentTime+i*0.5+0.4);
-                    osc.connect(gain);gain.connect(self._fbCtx.destination);
-                    osc.start(now+i*0.5);osc.stop(now+i*0.5+0.5);
-                });
-                self._timer=setTimeout(playBeat,2500);
-            }
-            playBeat();document.getElementById('musicBtn').textContent='🎵';
-        },
-        stop:function(){
-            this.playing=false;this.loading=false;
-            if(this.audio){this.audio.pause();}
-            if(this._timer){clearTimeout(this._timer);this._timer=null;}
-            document.getElementById('musicBtn').textContent='🔇';
-        }
-    };
-
-    function applyTheme(name){
-        var theme=THEMES[name];if(!theme)return;
-        var root=document.documentElement;
-        for(var key in theme)root.style.setProperty(key,theme[key]);
-        localStorage.setItem('2048-theme',name);
-    }
-
-    function getBoardSize(){return Math.min(440,window.innerWidth-30);}
-    function getGap(){return gridSize<=4?10:8;}
-    function getCellSize(){return(getBoardSize()-PADDING*2-getGap()*(gridSize-1))/gridSize;}
-
-    function getFontSize(val,cs){
-        if(currentSkin==='emoji')return Math.floor(cs*0.5)+'px';
-        if(val<100)return Math.floor(cs*0.45)+'px';
-        if(val<1000)return Math.floor(cs*0.35)+'px';
-        if(val<10000)return Math.floor(cs*0.28)+'px';
-        return Math.floor(cs*0.22)+'px';
-    }
-
-    function getTileContent(val){
-        if(currentSkin==='emoji')return EMOJI_MAP[val]||val;
-        return val;
-    }
-
-    function getTileClass(val){return val<=2048?'tile-'+val:'tile-super';}
-
-    function createEmptyGrid(){
-        var g=[];
-        for(var i=0;i<gridSize;i++){g.push([]);for(var j=0;j<gridSize;j++)g[i].push(0);}
-        return g;
-    }
-    function cloneGrid(g){return g.map(function(r){return r.slice();});}
-
-    function getMaxTile(){
-        var mx=0;
-        for(var i=0;i<gridSize;i++)for(var j=0;j<gridSize;j++)if(grid[i][j]>mx)mx=grid[i][j];
-        return mx;
-    }
-
-    function updateProgress(){
-        var mx=getMaxTile();
-        var pct=Math.min(100,Math.log2(mx)/11*100);
-        progressBar.style.width=pct+'%';
-    }
-
-    function spawnParticles(row,col,count){
-        var cs=getCellSize(),gap=getGap();
-        var cx=PADDING+col*(cs+gap)+cs/2;
-        var cy=PADDING+row*(cs+gap)+cs/2;
-        var colors=['#ffd700','#ff6b6b','#4ecdc4','#45b7d1','#f9ca24','#ff9ff3'];
-        for(var i=0;i<count;i++){
-            var p=document.createElement('div');p.className='particle';
-            var size=3+Math.random()*5;
-            p.style.width=size+'px';p.style.height=size+'px';
-            p.style.left=cx+'px';p.style.top=cy+'px';
-            p.style.background=colors[Math.floor(Math.random()*colors.length)];
-            var angle=Math.random()*Math.PI*2;
-            var dist=30+Math.random()*50;
-            p.style.setProperty('--px',Math.cos(angle)*dist+'px');
-            p.style.setProperty('--py',Math.sin(angle)*dist+'px');
-            p.style.animation='particleFly '+(0.4+Math.random()*0.4)+'s ease forwards';
-            boardEl.appendChild(p);
-            (function(el){setTimeout(function(){el.remove();},900);})(p);
-        }
-    }
-
-    function renderBackground(){
-        var bs=getBoardSize(),cs=getCellSize(),gap=getGap();
-        boardEl.style.width=bs+'px';boardEl.style.height=bs+'px';boardEl.innerHTML='';
-        for(var i=0;i<gridSize;i++){
-            for(var j=0;j<gridSize;j++){
-                var cell=document.createElement('div');cell.className='cell-bg';
-                cell.style.cssText='position:absolute;width:'+cs+'px;height:'+cs+'px;left:'+(PADDING+j*(cs+gap))+'px;top:'+(PADDING+i*(cs+gap))+'px;';
-                boardEl.appendChild(cell);
-            }
-        }
-    }
-
-    function renderTiles(newTiles,mergedCells){
-        var cs=getCellSize(),gap=getGap();
-        newTiles=newTiles||[];mergedCells=mergedCells||[];
-        boardEl.querySelectorAll('.tile').forEach(function(el){el.remove();});
-        for(var i=0;i<gridSize;i++){
-            for(var j=0;j<gridSize;j++){
-                if(grid[i][j]!==0){
-                    var tile=document.createElement('div');
-                    tile.className='tile '+getTileClass(grid[i][j]);
-                    if(currentSkin==='gradient'&&GRADIENT_MAP[grid[i][j]]){
-                        tile.style.background=GRADIENT_MAP[grid[i][j]];
-                    }
-                    tile.textContent=getTileContent(grid[i][j]);
-                    tile.style.width=cs+'px';tile.style.height=cs+'px';
-                    tile.style.left=(PADDING+j*(cs+gap))+'px';
-                    tile.style.top=(PADDING+i*(cs+gap))+'px';
-                    tile.style.fontSize=getFontSize(grid[i][j],cs);
-                    tile.style.lineHeight=cs+'px';
-                    if(newTiles.some(function(t){return t.row===i&&t.col===j;}))tile.classList.add('tile-new');
-                    if(mergedCells.some(function(t){return t.row===i&&t.col===j;}))tile.classList.add('tile-merged');
-                    boardEl.appendChild(tile);
-                }
-            }
-        }
-    }
-
-    function animateMove(moveResult,callback){
-        animating=true;
-        var cs=getCellSize(),gap=getGap();
-        var movements=moveResult.movements,mergeTargets=moveResult.mergeTargets;
-        boardEl.querySelectorAll('.tile').forEach(function(el){el.remove();});
-        var tileEls=[],occupied={};
-        for(var m=0;m<movements.length;m++){
-            var mov=movements[m],key=mov.toRow+','+mov.toCol;
-            var el=document.createElement('div');
-            el.className='tile '+getTileClass(mov.value);
-            if(currentSkin==='gradient'&&GRADIENT_MAP[mov.value])el.style.background=GRADIENT_MAP[mov.value];
-            el.textContent=getTileContent(mov.value);
-            el.style.width=cs+'px';el.style.height=cs+'px';
-            el.style.left=(PADDING+mov.fromCol*(cs+gap))+'px';
-            el.style.top=(PADDING+mov.fromRow*(cs+gap))+'px';
-            el.style.fontSize=getFontSize(mov.value,cs);el.style.lineHeight=cs+'px';
-            el.style.zIndex=occupied[key]?'1':'2';
-            boardEl.appendChild(el);tileEls.push({el:el,mov:mov});occupied[key]=true;
-        }
-        requestAnimationFrame(function(){requestAnimationFrame(function(){
-            for(var t=0;t<tileEls.length;t++){
-                tileEls[t].el.style.left=(PADDING+tileEls[t].mov.toCol*(cs+gap))+'px';
-                tileEls[t].el.style.top=(PADDING+tileEls[t].mov.toRow*(cs+gap))+'px';
-            }
-            setTimeout(function(){
-                for(var t2=0;t2<tileEls.length;t2++)tileEls[t2].el.remove();
-                var newTilePos=addRandomTile();
-                renderTiles(newTilePos?[newTilePos]:[],mergeTargets);
-                for(var mt=0;mt<mergeTargets.length;mt++){
-                    showFloatingScore(mergeTargets[mt].row,mergeTargets[mt].col,mergeTargets[mt].value);
-                    spawnParticles(mergeTargets[mt].row,mergeTargets[mt].col,6);
-                }
-                animating=false;if(callback)callback();
-            },130);
-        });});
-    }
-
-    function showFloatingScore(row,col,value){
-        var cs=getCellSize(),gap=getGap();
-        var el=document.createElement('div');el.className='floating-score';
-        el.textContent='+'+value;
-        el.style.left=(PADDING+col*(cs+gap)+cs/2-20)+'px';
-        el.style.top=(PADDING+row*(cs+gap))+'px';
-        boardEl.appendChild(el);setTimeout(function(){el.remove();},800);
-    }
-
-    function addRandomTile(){
-        var empty=[];
-        for(var i=0;i<gridSize;i++)for(var j=0;j<gridSize;j++)if(grid[i][j]===0)empty.push({row:i,col:j});
-        if(empty.length===0)return null;
-        var cell=empty[Math.floor(Math.random()*empty.length)];
-        grid[cell.row][cell.col]=Math.random()<0.9?2:4;
-        return cell;
-    }
-
-    function processLine(line){
-        var nonZero=line.filter(function(x){return x.value!==0;}),result=[],lineScore=0,i=0;
-        while(i<nonZero.length){
-            if(i+1<nonZero.length&&nonZero[i].value===nonZero[i+1].value){
-                var nv=nonZero[i].value*2;
-                result.push({value:nv,sources:[nonZero[i],nonZero[i+1]],merged:true});
-                lineScore+=nv;i+=2;
-            }else{
-                result.push({value:nonZero[i].value,sources:[nonZero[i]],merged:false});i++;
-            }
-        }
-        return{result:result,score:lineScore};
-    }
-
-    function calculateMove(direction){
-        var movements=[],mergeTargets=[],totalScore=0,moved=false;
-        var isHoriz=(direction==='left'||direction==='right');
-        var isReverse=(direction==='right'||direction==='down');
-        for(var lineIdx=0;lineIdx<gridSize;lineIdx++){
-            var line=[];
-            for(var pos=0;pos<gridSize;pos++){
-                var row=isHoriz?lineIdx:pos,col=isHoriz?pos:lineIdx;
-                if(grid[row][col]!==0)line.push({value:grid[row][col],origRow:row,origCol:col});
-            }
-            if(isReverse)line.reverse();
-            var processed=processLine(line);totalScore+=processed.score;
-            if(isReverse)processed.result.reverse();
-            var newLine=[];for(var p=0;p<gridSize;p++)newLine.push(0);
-            for(var j=0;j<processed.result.length;j++){
-                var targetPos=isReverse?gridSize-processed.result.length+j:j;
-                var targetRow=isHoriz?lineIdx:targetPos,targetCol=isHoriz?targetPos:lineIdx;
-                newLine[targetPos]=processed.result[j].value;
-                for(var s=0;s<processed.result[j].sources.length;s++){
-                    var src=processed.result[j].sources[s];
-                    movements.push({fromRow:src.origRow,fromCol:src.origCol,toRow:targetRow,toCol:targetCol,value:src.value});
-                }
-                if(processed.result[j].merged)mergeTargets.push({row:targetRow,col:targetCol,value:processed.result[j].value});
-            }
-            var oldLine=[];for(var p2=0;p2<gridSize;p2++){var r2=isHoriz?lineIdx:p2,c2=isHoriz?p2:lineIdx;oldLine.push(grid[r2][c2]);}
-            if(JSON.stringify(oldLine)!==JSON.stringify(newLine)){
-                moved=true;for(var p3=0;p3<gridSize;p3++){var r3=isHoriz?lineIdx:p3,c3=isHoriz?p3:lineIdx;grid[r3][c3]=newLine[p3];}
-            }
-        }
-        return{moved:moved,movements:movements,mergeTargets:mergeTargets,score:totalScore};
-    }
-
-    function checkGameOver(){
-        for(var i=0;i<gridSize;i++)for(var j=0;j<gridSize;j++)if(grid[i][j]===0)return false;
-        for(var i2=0;i2<gridSize;i2++)for(var j2=0;j2<gridSize-1;j2++)if(grid[i2][j2]===grid[i2][j2+1])return false;
-        for(var j3=0;j3<gridSize;j3++)for(var i3=0;i3<gridSize-1;i3++)if(grid[i3][j3]===grid[i3+1][j3])return false;
-        return true;
-    }
-
-    function checkWin(){
-        if(hasWon||keepPlaying)return false;
-        for(var i=0;i<gridSize;i++)for(var j=0;j<gridSize;j++)if(grid[i][j]===2048)return true;
-        return false;
-    }
-
-    function updateScoreDisplay(){
-        scoreEl.textContent=score;bestScoreEl.textContent=bestScore;
-        moveCountEl.textContent=moveHistory.length;
-        updateProgress();
-    }
-
-    function bumpScore(){scoreEl.classList.remove('bump');void scoreEl.offsetWidth;scoreEl.classList.add('bump');}
-
-    function triggerCombo(mergeCount){
-        if(mergeCount===0){comboCount=0;comboBadge.classList.remove('show');return;}
-        comboCount++;
-        if(comboCount>=2){
-            comboBadge.textContent='COMBO x'+comboCount;
-            comboBadge.classList.add('show');
-            Sound.combo();
-            if(comboTimer)clearTimeout(comboTimer);
-            comboTimer=setTimeout(function(){comboCount=0;comboBadge.classList.remove('show');},1500);
-        }
-        var stats=JSON.parse(localStorage.getItem('2048-stats')||'{}');
-        stats.maxCombo=Math.max(stats.maxCombo||0,comboCount);
-        localStorage.setItem('2048-stats',JSON.stringify(stats));
-    }
-
-    function checkAchievements(){
-        var stats=getStats();
-        var unlocked=JSON.parse(localStorage.getItem('2048-achievements')||'[]');
-        ACHIEVEMENTS.forEach(function(ach){
-            if(unlocked.indexOf(ach.id)===-1&&ach.check(stats)){
-                unlocked.push(ach.id);
-                localStorage.setItem('2048-achievements',JSON.stringify(unlocked));
-                showAchToast(ach);
-            }
-        });
-    }
-
-    function showAchToast(ach){
-        var el=document.createElement('div');el.className='ach-toast';
-        el.textContent='🏅 成就解锁: '+ach.icon+' '+ach.name;
-        document.body.appendChild(el);setTimeout(function(){el.remove();},3200);
-    }
-
-    function getStats(){
-        var s=JSON.parse(localStorage.getItem('2048-stats')||'{}');
-        s.score=score;s.highestTile=Math.max(getMaxTile(),highestTileEver);
-        s.totalMerges=s.totalMerges||0;s.totalGames=s.totalGames||0;
-        s.maxCombo=s.maxCombo||0;return s;
-    }
-
-    function saveAutoSave(){
-        if(!isPlaying||isGameOver)return;
-        localStorage.setItem('2048-autosave',JSON.stringify({
-            grid:grid,gridSize:gridSize,score:score,moveHistory:moveHistory,
-            hasWon:hasWon,keepPlaying:keepPlaying,comboCount:comboCount
-        }));
-    }
-
-    function loadAutoSave(){
-        try{
-            var data=JSON.parse(localStorage.getItem('2048-autosave'));
-            if(!data||!data.grid)return false;
-            gridSize=data.gridSize;grid=data.grid;score=data.score;
-            moveHistory=data.moveHistory||[];hasWon=data.hasWon||false;
-            keepPlaying=data.keepPlaying||false;comboCount=data.comboCount||0;
-            document.getElementById('diffSelect').value=gridSize;
-            return true;
-        }catch(e){return false;}
-    }
-
-    function clearAutoSave(){localStorage.removeItem('2048-autosave');}
-
-    function startTimer(){
-        if(timedInterval)clearInterval(timedInterval);
-        timedRemaining=timedSeconds;
-        updateTimerDisplay();
-        timedInterval=setInterval(function(){
-            if(!isPlaying||isPaused||isGameOver)return;
-            timedRemaining--;
-            updateTimerDisplay();
-            if(timedRemaining<=0){
-                clearInterval(timedInterval);
-                isGameOver=true;isPlaying=false;
-                Sound.gameover();
-                boardContainer.classList.add('shake');
-                setTimeout(function(){boardContainer.classList.remove('shake');},500);
-                finalScoreEl.textContent='时间到! 最终分数: '+score;
-                gameoverOverlay.classList.remove('hidden');
-                saveToLeaderboard();updateButtons();clearAutoSave();
-            }
-        },1000);
-    }
-
-    function stopTimer(){if(timedInterval){clearInterval(timedInterval);timedInterval=null;}}
-
-    function updateTimerDisplay(){
-        var m=Math.floor(timedRemaining/60),s=timedRemaining%60;
-        timerDisplay.textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
-        timerDisplay.classList.toggle('danger',timedRemaining<=30&&timedMode);
-    }
-
-    function handleMove(direction){
-        if(!isPlaying||isPaused||isGameOver||animating||isReplaying)return;
-        var prevGrid=cloneGrid(grid),prevScore=score;
-        var result=calculateMove(direction);
-        if(!result.moved)return;
-
-        undoStack.push({grid:prevGrid,score:prevScore,moveCount:moveHistory.length});
-        if(undoStack.length>MAX_UNDO)undoStack.shift();
-
-        moveHistory.push(direction);Sound.move();
-        var mergeCount=result.mergeTargets.length;
-        var comboMultiplier=comboCount>=2?1+comboCount*0.1:1;
-        var earnedScore=Math.round(result.score*comboMultiplier);
-        score+=earnedScore;
-        if(score>bestScore){bestScore=score;localStorage.setItem('2048-best-score',bestScore.toString());}
-        updateScoreDisplay();if(earnedScore>0)bumpScore();
-        triggerCombo(mergeCount);
-
-        var stats=JSON.parse(localStorage.getItem('2048-stats')||'{}');
-        stats.totalMerges=(stats.totalMerges||0)+mergeCount;
-        stats.maxCombo=Math.max(stats.maxCombo||0,comboCount);
-        localStorage.setItem('2048-stats',JSON.stringify(stats));
-
-        animateMove(result,function(){
-            var mx=getMaxTile();
-            if(mx>highestTileEver){highestTileEver=mx;localStorage.setItem('2048-highest-tile',mx);}
-            checkAchievements();saveAutoSave();
-
-            if(checkWin()){
-                hasWon=true;Sound.win();winOverlay.classList.remove('hidden');
-                if(timedMode&&timedRemaining>=120){
-                    var st=JSON.parse(localStorage.getItem('2048-stats')||'{}');
-                    st.speedWin=true;localStorage.setItem('2048-stats',JSON.stringify(st));
-                    checkAchievements();
-                }
-                return;
-            }
-            if(checkGameOver()){
-                isGameOver=true;isPlaying=false;Sound.gameover();
-                boardContainer.classList.add('shake');
-                setTimeout(function(){boardContainer.classList.remove('shake');},500);
-                finalScoreEl.textContent='最终分数: '+score;
-                gameoverOverlay.classList.remove('hidden');
-                saveToLeaderboard();updateButtons();clearAutoSave();
-                var st2=JSON.parse(localStorage.getItem('2048-stats')||'{}');
-                st2.totalGames=(st2.totalGames||0)+1;
-                localStorage.setItem('2048-stats',JSON.stringify(st2));
-                checkAchievements();
-            }
-        });
-    }
-
-    function initGame(){
-        grid=createEmptyGrid();score=0;isGameOver=false;hasWon=false;keepPlaying=false;
-        moveHistory=[];undoStack=[];comboCount=0;comboBadge.classList.remove('show');
-        bestScore=parseInt(localStorage.getItem('2048-best-score'))||0;
-        updateScoreDisplay();renderBackground();addRandomTile();addRandomTile();renderTiles();
-        initialState={grid:cloneGrid(grid),gridSize:gridSize};
-        gameoverOverlay.classList.add('hidden');winOverlay.classList.add('hidden');pauseOverlay.classList.add('hidden');
-        playStartTime=Date.now();
-    }
-
-    window.startGame=function(){
-        Sound.init();Sound.resume();
-        isPlaying=true;isPaused=false;
-        if(timedMode)startTimer();
-        initGame();updateButtons();
-    };
-
-    window.restartGame=function(){
-        isPlaying=true;isPaused=false;isReplaying=false;
-        if(replayTimer){clearTimeout(replayTimer);replayTimer=null;}
-        if(timedMode)startTimer();else stopTimer();
-        initGame();updateButtons();clearAutoSave();
-    };
-
-    window.togglePause=function(){
-        if(!isPlaying||isGameOver)return;
-        isPaused=!isPaused;
-        if(isPaused){pauseOverlay.classList.remove('hidden');pauseBtn.textContent='继续';pauseBtn.classList.add('active');}
-        else{pauseOverlay.classList.add('hidden');pauseBtn.textContent='暂停';pauseBtn.classList.remove('active');}
-    };
-
-    window.continueGame=function(){keepPlaying=true;winOverlay.classList.add('hidden');};
-
-    window.undoMove=function(){
-        if(undoStack.length===0||!isPlaying||isPaused||animating||isReplaying)return;
-        var prev=undoStack.pop();
-        grid=prev.grid;score=prev.score;
-        if(moveHistory.length>0)moveHistory.pop();
-        Sound.undo();updateScoreDisplay();renderTiles();
-        saveAutoSave();
-    };
-
-    window.changeDifficulty=function(val){
-        gridSize=parseInt(val);
-        if(isPlaying)restartGame();else renderBackground();
-    };
-
-    window.changeTheme=function(name){applyTheme(name);};
-    window.changeSkin=function(val){currentSkin=val;renderTiles();};
-
-    window.toggleSound=function(){
-        Sound.enabled=!Sound.enabled;
-        document.getElementById('soundBtn').textContent=Sound.enabled?'🔊':'🔇';
-    };
-
-    window.toggleMusic=function(){
-        if(BGM.playing){BGM.stop();}else{Sound.init();Sound.resume();BGM.start();}
-    };
-
-    window.toggleTimedMode=function(){
-        timedMode=!timedMode;
-        document.getElementById('timedBtn').classList.toggle('active',timedMode);
-        if(timedMode){timerDisplay.classList.remove('hidden');if(isPlaying)startTimer();}
-        else{stopTimer();timerDisplay.textContent='00:00';timerDisplay.classList.remove('danger');}
-    };
-
-    function updateButtons(){
-        startBtn.disabled=isPlaying;
-        pauseBtn.disabled=!isPlaying||isGameOver;
-        restartBtn.disabled=!isPlaying&&moveHistory.length===0;
-        replayBtn.disabled=moveHistory.length===0;
-        undoBtn.disabled=undoStack.length===0||!isPlaying;
-    }
-
-    function saveToLeaderboard(){
-        var board=JSON.parse(localStorage.getItem('2048-leaderboard')||'[]');
-        board.push({score:score,gridSize:gridSize,moves:moveHistory.length,date:new Date().toLocaleString('zh-CN'),timed:timedMode});
-        board.sort(function(a,b){return b.score-a.score;});
-        if(board.length>20)board.length=20;
-        localStorage.setItem('2048-leaderboard',JSON.stringify(board));
-    }
-
-    window.showLeaderboard=function(){
-        var board=JSON.parse(localStorage.getItem('2048-leaderboard')||'[]');
-        var list=document.getElementById('leaderboardList');list.innerHTML='';
-        if(board.length===0){list.innerHTML='<li style="text-align:center;padding:16px;color:#999;">暂无记录</li>';}
-        else{
-            for(var i=0;i<board.length;i++){
-                var item=board[i],li=document.createElement('li');li.className='leaderboard-item';
-                li.innerHTML='<span class="lb-rank">'+(i+1)+'</span><span class="lb-score">'+item.score+' 分'+(item.timed?' ⏱':'')+'</span><span class="lb-info">'+item.gridSize+'×'+item.gridSize+' | '+(item.moves||'-')+'步 | '+item.date+'</span>';
-                list.appendChild(li);
-            }
-        }
-        document.getElementById('leaderboardModal').classList.remove('hidden');
-    };
-
-    window.clearLeaderboard=function(){localStorage.removeItem('2048-leaderboard');showLeaderboard();};
-
-    window.showStats=function(){
-        var s=getStats();
-        var html='<div class="stat-card"><div class="stat-num">'+(s.totalGames||0)+'</div><div class="stat-lbl">总局数</div></div>';
-        html+='<div class="stat-card"><div class="stat-num">'+(s.totalMerges||0)+'</div><div class="stat-lbl">总合并</div></div>';
-        html+='<div class="stat-card"><div class="stat-num">'+highestTileEver+'</div><div class="stat-lbl">最高方块</div></div>';
-        html+='<div class="stat-card"><div class="stat-num">'+bestScore+'</div><div class="stat-lbl">历史最高分</div></div>';
-        html+='<div class="stat-card"><div class="stat-num">x'+(s.maxCombo||0)+'</div><div class="stat-lbl">最高连击</div></div>';
-        html+='<div class="stat-card"><div class="stat-num">'+moveHistory.length+'</div><div class="stat-lbl">本局步数</div></div>';
-        document.getElementById('statGrid').innerHTML=html;
-        document.getElementById('statsModal').classList.remove('hidden');
-    };
-
-    window.showAchievements=function(){
-        var unlocked=JSON.parse(localStorage.getItem('2048-achievements')||'[]');
-        var list=document.getElementById('achList');list.innerHTML='';
-        ACHIEVEMENTS.forEach(function(ach){
-            var isUnlocked=unlocked.indexOf(ach.id)!==-1;
-            var div=document.createElement('div');
-            div.className='achievement'+(isUnlocked?'':' locked');
-            div.innerHTML='<span class="ach-icon">'+ach.icon+'</span><div><div class="ach-name">'+ach.name+'</div><div class="ach-desc">'+ach.desc+'</div></div>';
-            list.appendChild(div);
-        });
-        document.getElementById('achModal').classList.remove('hidden');
-    };
-
-    window.showHelp=function(){document.getElementById('helpModal').classList.remove('hidden');};
-
-    window.shareScore=function(){
-        var text='🎮 2048 终极版 | 分数: '+score+' | 步数: '+moveHistory.length+' | 最高方块: '+getMaxTile()+' | '+gridSize+'×'+gridSize;
-        if(navigator.clipboard){navigator.clipboard.writeText(text).then(function(){showAchToast({icon:'📋',name:'分数已复制!'});});}
-        else{var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();showAchToast({icon:'📋',name:'分数已复制!'});}
-    };
-
-    window.closeModal=function(id,event){if(event.target.id===id)document.getElementById(id).classList.add('hidden');};
-
-    window.startReplay=function(){
-        if(moveHistory.length===0)return;
-        if(isReplaying){stopReplay();return;}
-        isReplaying=true;document.getElementById('replayModal').classList.remove('hidden');
-        var savedHistory=moveHistory.slice(),savedInitState=initialState;
-        grid=cloneGrid(savedInitState.grid);gridSize=savedInitState.gridSize;score=0;
-        isPlaying=true;isPaused=false;isGameOver=false;hasWon=false;keepPlaying=false;
-        renderBackground();renderTiles();updateScoreDisplay();
-        var step=0,totalSteps=savedHistory.length;
-        var statusEl=document.getElementById('replayStatus'),progressEl=document.getElementById('replayProgress');
-        function replayStep(){
-            if(!isReplaying||step>=totalSteps){
-                isReplaying=false;statusEl.textContent='回放完成!';progressEl.style.width='100%';
-                setTimeout(function(){document.getElementById('replayModal').classList.add('hidden');},1000);return;
-            }
-            var dir=savedHistory[step];
-            var dirNames={left:'← 左',right:'→ 右',up:'↑ 上',down:'↓ 下'};
-            statusEl.textContent='步骤 '+(step+1)+'/'+totalSteps+' '+(dirNames[dir]||dir);
-            progressEl.style.width=((step+1)/totalSteps*100)+'%';
-            var result=calculateMove(dir);
-            if(result.moved){
-                score+=result.score;updateScoreDisplay();animating=true;
-                var cs=getCellSize(),gap=getGap();
-                boardEl.querySelectorAll('.tile').forEach(function(el){el.remove();});
-                var tileEls=[];
-                for(var m=0;m<result.movements.length;m++){
-                    var mov=result.movements[m],el=document.createElement('div');
-                    el.className='tile '+getTileClass(mov.value);
-                    if(currentSkin==='gradient'&&GRADIENT_MAP[mov.value])el.style.background=GRADIENT_MAP[mov.value];
-                    el.textContent=getTileContent(mov.value);
-                    el.style.width=cs+'px';el.style.height=cs+'px';
-                    el.style.left=(PADDING+mov.fromCol*(cs+gap))+'px';
-                    el.style.top=(PADDING+mov.fromRow*(cs+gap))+'px';
-                    el.style.fontSize=getFontSize(mov.value,cs);el.style.lineHeight=cs+'px';
-                    boardEl.appendChild(el);tileEls.push({el:el,mov:mov});
-                }
-                requestAnimationFrame(function(){requestAnimationFrame(function(){
-                    for(var t=0;t<tileEls.length;t++){
-                        tileEls[t].el.style.left=(PADDING+tileEls[t].mov.toCol*(cs+gap))+'px';
-                        tileEls[t].el.style.top=(PADDING+tileEls[t].mov.toRow*(cs+gap))+'px';
-                    }
-                    setTimeout(function(){
-                        for(var t2=0;t2<tileEls.length;t2++)tileEls[t2].el.remove();
-                        addRandomTile();renderTiles([],result.mergeTargets);animating=false;
-                        step++;replayTimer=setTimeout(replayStep,350);
-                    },130);
-                });});
-            }else{step++;replayTimer=setTimeout(replayStep,50);}
-        }
-        replayTimer=setTimeout(replayStep,500);
-    };
-
-    window.stopReplay=function(){
-        isReplaying=false;if(replayTimer){clearTimeout(replayTimer);replayTimer=null;}
-        document.getElementById('replayModal').classList.add('hidden');
-    };
-
-    var touchStartX=0,touchStartY=0;
-    document.addEventListener('keydown',function(e){
-        var map={'ArrowUp':'up','ArrowDown':'down','ArrowLeft':'left','ArrowRight':'right','w':'up','s':'down','a':'left','d':'right','W':'up','S':'down','A':'left','D':'right'};
-        if(map[e.key]){e.preventDefault();handleMove(map[e.key]);}
-        if(e.key==='z'||e.key==='Z'){e.preventDefault();undoMove();}
-        if(e.key==='p'||e.key==='P')togglePause();
-        if(e.key==='r'||e.key==='R')restartGame();
-    });
-
-    boardEl.addEventListener('touchstart',function(e){if(e.touches.length===1){touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;}},{passive:true});
-    boardEl.addEventListener('touchend',function(e){
-        if(!e.changedTouches.length)return;
-        var dx=e.changedTouches[0].clientX-touchStartX,dy=e.changedTouches[0].clientY-touchStartY;
-        if(Math.max(Math.abs(dx),Math.abs(dy))<30)return;
-        handleMove(Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up'));
-    },{passive:true});
-    boardEl.addEventListener('touchmove',function(e){e.preventDefault();},{passive:false});
-
-    window.addEventListener('resize',function(){if(grid.length>0){renderBackground();renderTiles();}});
-
-    var savedTheme=localStorage.getItem('2048-theme')||'classic';
-    applyTheme(savedTheme);document.getElementById('themeSelect').value=savedTheme;
-    bestScore=parseInt(localStorage.getItem('2048-best-score'))||0;
-    updateScoreDisplay();renderBackground();updateButtons();
-
-    if(loadAutoSave()){
-        isPlaying=true;isPaused=false;
-        renderBackground();renderTiles();updateScoreDisplay();updateButtons();
-        initialState={grid:cloneGrid(grid),gridSize:gridSize};
-    }
-
-})();
-</script>
-</body>
-</html>
+&lt;!DOCTYPE html&gt;
+&lt;html lang="zh-CN"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"&gt;
+    &lt;title&gt;2048 终极版&lt;/title&gt;
+    &lt;link rel="stylesheet" href="2048-styles.css"&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div id="app"&gt;
+        &lt;!-- 加载画面 --&gt;
+        &lt;div id="loading-screen" class="screen active"&gt;
+            &lt;div class="loading-container"&gt;
+                &lt;h1 class="loading-title"&gt;2048&lt;/h1&gt;
+                &lt;div class="loading-bar"&gt;
+                    &lt;div class="loading-progress"&gt;&lt;/div&gt;
+                &lt;/div&gt;
+                &lt;p class="loading-text"&gt;正在加载游戏...&lt;/p&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;!-- 游戏主界面 --&gt;
+        &lt;div id="game-screen" class="screen"&gt;
+            &lt;!-- 游戏头部 --&gt;
+            &lt;div class="game-header"&gt;
+                &lt;h1&gt;2048&lt;/h1&gt;
+                &lt;div class="score-container"&gt;
+                    &lt;div class="score-box"&gt;
+                        &lt;div class="score-label"&gt;分数&lt;/div&gt;
+                        &lt;div class="score-value" id="score"&gt;0&lt;/div&gt;
+                    &lt;/div&gt;
+                    &lt;div class="score-box"&gt;
+                        &lt;div class="score-label"&gt;最高分&lt;/div&gt;
+                        &lt;div class="score-value" id="best-score"&gt;0&lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+
+            &lt;!-- 游戏控制栏 --&gt;
+            &lt;div class="controls-bar"&gt;
+                &lt;button class="control-btn" onclick="newGame()"&gt;开始&lt;/button&gt;
+                &lt;button class="control-btn" onclick="showLeaderboard()"&gt;🏆 排行&lt;/button&gt;
+                &lt;button class="control-btn" onclick="showAchievements()"&gt;🏅 成就&lt;/button&gt;
+                &lt;button class="control-btn" onclick="showResume()"&gt;📄 简历&lt;/button&gt;
+                &lt;button class="control-btn" onclick="showHelp()"&gt;❓ 帮助&lt;/button&gt;
+                &lt;button class="control-btn" onclick="shareGame()"&gt;📤 分享&lt;/button&gt;
+            &lt;/div&gt;
+
+            &lt;!-- 游戏网格 --&gt;
+            &lt;div class="game-container"&gt;
+                &lt;div class="grid-container"&gt;
+                    &lt;div class="grid-background"&gt;&lt;/div&gt;
+                    &lt;div class="tile-container" id="tile-container"&gt;&lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+
+            &lt;!-- 游戏说明 --&gt;
+            &lt;p class="game-instruction"&gt;使用方向键或滑动合并方块！&lt;/p&gt;
+        &lt;/div&gt;
+
+        &lt;!-- 教程弹窗 --&gt;
+        &lt;div id="tutorial-modal" class="modal"&gt;
+            &lt;div class="modal-container"&gt;
+                &lt;h2&gt;🎮 游戏教程&lt;/h2&gt;
+                &lt;div class="tutorial-content"&gt;
+                    &lt;div class="tutorial-step active" id="tutorial-step-1"&gt;
+                        &lt;h3&gt;第1步：了解游戏&lt;/h3&gt;
+                        &lt;p&gt;使用键盘方向键或滑动屏幕移动所有方块&lt;/p&gt;
+                    &lt;/div&gt;
+                    &lt;div class="tutorial-step" id="tutorial-step-2"&gt;
+                        &lt;h3&gt;第2步：合并方块&lt;/h3&gt;
+                        &lt;p&gt;相同数字的方块碰撞时会合并成它们的和&lt;/p&gt;
+                    &lt;/div&gt;
+                    &lt;div class="tutorial-step" id="tutorial-step-3"&gt;
+                        &lt;h3&gt;第3步：目标&lt;/h3&gt;
+                        &lt;p&gt;合并方块直到获得2048！&lt;/p&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+                &lt;div class="tutorial-nav"&gt;
+                    &lt;button class="control-btn" id="prev-tutorial" onclick="prevTutorial()"&gt;上一步&lt;/button&gt;
+                    &lt;span class="tutorial-dots"&gt;
+                        &lt;span class="tutorial-dot active" data-step="1"&gt;&lt;/span&gt;
+                        &lt;span class="tutorial-dot" data-step="2"&gt;&lt;/span&gt;
+                        &lt;span class="tutorial-dot" data-step="3"&gt;&lt;/span&gt;
+                    &lt;/span&gt;
+                    &lt;button class="control-btn" id="next-tutorial" onclick="nextTutorial()"&gt;下一步&lt;/button&gt;
+                &lt;/div&gt;
+                &lt;label class="dont-show-label"&gt;
+                    &lt;input type="checkbox" id="dont-show-tutorial"&gt; 不再显示
+                &lt;/label&gt;
+                &lt;button class="control-btn primary" onclick="closeTutorial()"&gt;开始游戏&lt;/button&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;!-- 排行榜弹窗 --&gt;
+        &lt;div id="leaderboard-modal" class="modal"&gt;
+            &lt;div class="modal-container"&gt;
+                &lt;div class="modal-header"&gt;
+                    &lt;h2&gt;🏆 排行榜&lt;/h2&gt;
+                    &lt;button class="close-btn" onclick="closeLeaderboard()"&gt;×&lt;/button&gt;
+                &lt;/div&gt;
+                &lt;div class="leaderboard-sort"&gt;
+                    &lt;button class="sort-btn active" onclick="sortLeaderboard('score')"&gt;按分数&lt;/button&gt;
+                    &lt;button class="sort-btn" onclick="sortLeaderboard('time')"&gt;按时间&lt;/button&gt;
+                &lt;/div&gt;
+                &lt;div class="leaderboard-list" id="leaderboard-list"&gt;
+                    &lt;!-- 排行榜项将动态生成 --&gt;
+                &lt;/div&gt;
+                &lt;button class="control-btn danger" onclick="clearLeaderboard()"&gt;清空排行榜&lt;/button&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;!-- 成就弹窗 --&gt;
+        &lt;div id="achievements-modal" class="modal"&gt;
+            &lt;div class="modal-container"&gt;
+                &lt;div class="modal-header"&gt;
+                    &lt;h2&gt;🏅 成就&lt;/h2&gt;
+                    &lt;button class="close-btn" onclick="closeAchievements()"&gt;×&lt;/button&gt;
+                &lt;/div&gt;
+                &lt;div class="achievements-list" id="achievements-list"&gt;
+                    &lt;div class="achievement-item unlocked"&gt;
+                        &lt;div class="achievement-icon"&gt;🎯&lt;/div&gt;
+                        &lt;div class="achievement-info"&gt;
+                            &lt;h4&gt;首次通关&lt;/h4&gt;
+                            &lt;p&gt;获得2048方块&lt;/p&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                    &lt;div class="achievement-item"&gt;
+                        &lt;div class="achievement-icon"&gt;⭐&lt;/div&gt;
+                        &lt;div class="achievement-info"&gt;
+                            &lt;h4&gt;满分挑战&lt;/h4&gt;
+                            &lt;p&gt;获得10000分&lt;/p&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                    &lt;div class="achievement-item"&gt;
+                        &lt;div class="achievement-icon"&gt;⚡&lt;/div&gt;
+                        &lt;div class="achievement-info"&gt;
+                            &lt;h4&gt;速度之王&lt;/h4&gt;
+                            &lt;p&gt;在1分钟内获得2048&lt;/p&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                    &lt;div class="achievement-item"&gt;
+                        &lt;div class="achievement-icon"&gt;🎖&lt;/div&gt;
+                        &lt;div class="achievement-info"&gt;
+                            &lt;h4&gt;坚持就是胜利&lt;/h4&gt;
+                            &lt;p&gt;连续玩10局&lt;/p&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;!-- 简历弹窗 --&gt;
+        &lt;div id="resume-modal" class="modal"&gt;
+            &lt;div class="modal-container resume-container"&gt;
+                &lt;div class="modal-header"&gt;
+                    &lt;h2&gt;📄 个人简历&lt;/h2&gt;
+                    &lt;button class="close-btn" onclick="closeResume()"&gt;×&lt;/button&gt;
+                &lt;/div&gt;
+                &lt;div class="resume-content"&gt;
+                    &lt;!-- 简历侧边栏 --&gt;
+                    &lt;div class="resume-sidebar"&gt;
+                        &lt;div class="resume-avatar"&gt;
+                            &lt;div class="avatar-icon"&gt;👨‍💻&lt;/div&gt;
+                        &lt;/div&gt;
+                        &lt;h3 class="resume-name"&gt;游戏开发者&lt;/h3&gt;
+                        &lt;p class="resume-title"&gt;全栈开发工程师&lt;/p&gt;
+                        
+                        &lt;div class="sidebar-section"&gt;
+                            &lt;h4&gt;联系方式&lt;/h4&gt;
+                            &lt;div class="contact-item"&gt;
+                                &lt;span&gt;📧&lt;/span&gt;
+                                &lt;span&gt;developer@example.com&lt;/span&gt;
+                            &lt;/div&gt;
+                            &lt;div class="contact-item"&gt;
+                                &lt;span&gt;📱&lt;/span&gt;
+                                &lt;span&gt;138-0000-0000&lt;/span&gt;
+                            &lt;/div&gt;
+                            &lt;div class="contact-item"&gt;
+                                &lt;span&gt;📍&lt;/span&gt;
+                                &lt;span&gt;中国·深圳&lt;/span&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+
+                        &lt;div class="sidebar-section"&gt;
+                            &lt;h4&gt;技能标签&lt;/h4&gt;
+                            &lt;div class="skill-tags"&gt;
+                                &lt;span class="skill-tag"&gt;JavaScript&lt;/span&gt;
+                                &lt;span class="skill-tag"&gt;HTML5&lt;/span&gt;
+                                &lt;span class="skill-tag"&gt;CSS3&lt;/span&gt;
+                                &lt;span class="skill-tag"&gt;React&lt;/span&gt;
+                                &lt;span class="skill-tag"&gt;Node.js&lt;/span&gt;
+                                &lt;span class="skill-tag"&gt;Python&lt;/span&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+
+                    &lt;!-- 简历主内容 --&gt;
+                    &lt;div class="resume-main"&gt;
+                        &lt;div class="main-section"&gt;
+                            &lt;h4 class="main-title"&gt;👤 个人简介&lt;/h4&gt;
+                            &lt;p class="profile-text"&gt;拥有5年全栈开发经验，热爱技术创新，专注于构建高性能、用户友好的Web应用。具备丰富的项目经验，善于团队协作，追求代码质量与用户体验的完美平衡。对游戏开发和云计算领域有浓厚兴趣。&lt;/p&gt;
+                        &lt;/div&gt;
+                        
+                        &lt;div class="main-section"&gt;
+                            &lt;h4 class="main-title"&gt;💼 工作经历&lt;/h4&gt;
+                            &lt;div class="timeline"&gt;
+                                &lt;div class="timeline-item"&gt;
+                                    &lt;div class="timeline-date"&gt;2022 - 至今&lt;/div&gt;
+                                    &lt;div class="timeline-content"&gt;
+                                        &lt;h5 class="timeline-company"&gt;腾讯科技&lt;/h5&gt;
+                                        &lt;p class="timeline-position"&gt;高级前端工程师&lt;/p&gt;
+                                        &lt;ul class="timeline-desc"&gt;
+                                            &lt;li&gt;负责核心产品的前端架构设计与开发&lt;/li&gt;
+                                            &lt;li&gt;带领团队完成多个大型项目，用户量超千万&lt;/li&gt;
+                                            &lt;li&gt;优化页面性能，加载速度提升40%&lt;/li&gt;
+                                        &lt;/ul&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+                                &lt;div class="timeline-item"&gt;
+                                    &lt;div class="timeline-date"&gt;2021 - 2022&lt;/div&gt;
+                                    &lt;div class="timeline-content"&gt;
+                                        &lt;h5 class="timeline-company"&gt;字节跳动&lt;/h5&gt;
+                                        &lt;p class="timeline-position"&gt;前端开发工程师&lt;/p&gt;
+                                        &lt;ul class="timeline-desc"&gt;
+                                            &lt;li&gt;参与抖音相关产品开发&lt;/li&gt;
+                                            &lt;li&gt;开发内部工具平台，提升团队效率30%&lt;/li&gt;
+                                        &lt;/ul&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+                        
+                        &lt;div class="main-section"&gt;
+                            &lt;h4 class="main-title"&gt;🚀 项目经验&lt;/h4&gt;
+                            &lt;div class="project-cards"&gt;
+                                &lt;div class="project-card"&gt;
+                                    &lt;div class="project-header"&gt;
+                                        &lt;h5 class="project-name"&gt;2048游戏增强版&lt;/h5&gt;
+                                        &lt;span class="project-tag"&gt;个人项目&lt;/span&gt;
+                                    &lt;/div&gt;
+                                    &lt;p class="project-desc"&gt;在经典2048游戏基础上添加了排行榜、成就系统、个人简历页面、分享功能、加载动画和操作教程，提供更完整的游戏体验。&lt;/p&gt;
+                                    &lt;div class="project-tech"&gt;
+                                        &lt;span&gt;JavaScript&lt;/span&gt;
+                                        &lt;span&gt;HTML5&lt;/span&gt;
+                                        &lt;span&gt;CSS3&lt;/span&gt;
+                                    &lt;/div&gt;
+                                &lt;/div&gt;
+                            &lt;/div&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;!-- 帮助弹窗 --&gt;
+        &lt;div id="help-modal" class="modal"&gt;
+            &lt;div class="modal-container"&gt;
+                &lt;div class="modal-header"&gt;
+                    &lt;h2&gt;❓ 帮助&lt;/h2&gt;
+                    &lt;button class="close-btn" onclick="closeHelp()"&gt;×&lt;/button&gt;
+                &lt;/div&gt;
+                &lt;div class="help-content"&gt;
+                    &lt;h3&gt;如何玩？&lt;/h3&gt;
+                    &lt;p&gt;使用键盘方向键（↑ ↓ ← →）或在屏幕上滑动来移动所有方块。当两个相同数字的方块碰撞时，它们会合并成一个！&lt;/p&gt;
+                    
+                    &lt;h3&gt;目标&lt;/h3&gt;
+                    &lt;p&gt;合并方块直到获得2048方块！&lt;/p&gt;
+                    
+                    &lt;h3&gt;技巧&lt;/h3&gt;
+                    &lt;ul&gt;
+                        &lt;li&gt;把大数字固定在角落&lt;/li&gt;
+                        &lt;li&gt;按特定顺序排列方块&lt;/li&gt;
+                        &lt;li&gt;不要急于移动，先思考！&lt;/li&gt;
+                    &lt;/ul&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;!-- 游戏结束弹窗 --&gt;
+        &lt;div id="gameover-modal" class="modal"&gt;
+            &lt;div class="modal-container"&gt;
+                &lt;h2&gt;游戏结束！&lt;/h2&gt;
+                &lt;p class="final-score"&gt;最终分数：&lt;span id="final-score"&gt;0&lt;/span&gt;&lt;/p&gt;
+                &lt;div class="name-input"&gt;
+                    &lt;input type="text" id="player-name" placeholder="输入您的名字" maxlength="20"&gt;
+                &lt;/div&gt;
+                &lt;div class="gameover-buttons"&gt;
+                    &lt;button class="control-btn primary" onclick="saveAndRestart()"&gt;保存并重玩&lt;/button&gt;
+                    &lt;button class="control-btn" onclick="restartGame()"&gt;重玩&lt;/button&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;!-- 成就通知 --&gt;
+        &lt;div id="achievement-notification" class="achievement-notification"&gt;
+            &lt;div class="notification-content"&gt;
+                &lt;span class="notification-icon"&gt;🏅&lt;/span&gt;
+                &lt;div class="notification-text"&gt;
+                    &lt;div class="notification-title"&gt;成就解锁！&lt;/div&gt;
+                    &lt;div class="notification-desc" id="achievement-desc"&gt;&lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;script src="2048-script.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
