@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>2048 终极版</title>
+  <link rel="stylesheet" href="2048-styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 加载画面 -->
+    <div id="loading-screen" class="screen active">
+      <div class="loading-container">
+        <h1 class="loading-title">2048</h1>
+        <div class="loading-bar">
+          <div class="loading-progress"></div>
+        </div>
+        <p class="loading-text">正在加载游戏...</p>
+      </div>
+    </div>
+
+    <!-- 游戏主界面 -->
+    <div id="game-screen" class="screen">
+      <!-- 游戏头部 -->
+      <div class="game-header">
+        <h1>2048</h1>
+        <div class="score-container">
+          <div class="score-box">
+            <div class="score-label">分数</div>
+            <div class="score-value" id="score">0</div>
+          </div>
+          <div class="score-box">
+            <div class="score-label">最高分</div>
+            <div class="score-value" id="best-score">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 游戏控制栏 -->
+      <div class="controls-bar">
+        <button class="control-btn" onclick="newGame()">开始</button>
+        <button class="control-btn" onclick="showLeaderboard()">🏆 排行</button>
+        <button class="control-btn" onclick="showAchievements()">🏅 成就</button>
+        <button class="control-btn" onclick="showResume()">📄 简历</button>
+        <button class="control-btn" onclick="showHelp()">❓ 帮助</button>
+        <button class="control-btn" onclick="shareGame()">📤 分享</button>
+      </div>
+
+      <!-- 游戏网格 -->
+      <div class="game-container">
+        <div class="grid-container">
+          <div class="grid-background">
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+          </div>
+          <div class="tile-container" id="tile-container"></div>
+        </div>
+      </div>
+
+      <!-- 游戏说明 -->
+      <p class="game-instruction">使用方向键或滑动合并方块！</p>
+    </div>
+
+    <!-- 教程弹窗 -->
+    <div id="tutorial-modal" class="modal">
+      <div class="modal-container">
+        <h2>🎮 游戏教程</h2>
+        <div class="tutorial-content">
+          <div class="tutorial-step active" id="tutorial-step-1">
+            <h3>第1步：了解游戏</h3>
+            <p>使用键盘方向键或滑动屏幕移动所有方块</p>
+          </div>
+          <div class="tutorial-step" id="tutorial-step-2">
+            <h3>第2步：合并方块</h3>
+            <p>相同数字的方块碰撞时会合并成它们的和</p>
+          </div>
+          <div class="tutorial-step" id="tutorial-step-3">
+            <h3>第3步：目标</h3>
+            <p>合并方块直到获得2048！</p>
+          </div>
+        </div>
+        <div class="tutorial-nav">
+          <button class="control-btn" id="prev-tutorial" onclick="prevTutorial()">上一步</button>
+          <span class="tutorial-dots">
+            <span class="tutorial-dot active" data-step="1"></span>
+            <span class="tutorial-dot" data-step="2"></span>
+            <span class="tutorial-dot" data-step="3"></span>
+          </span>
+          <button class="control-btn" id="next-tutorial" onclick="nextTutorial()">下一步</button>
+        </div>
+        <label class="dont-show-label">
+          <input type="checkbox" id="dont-show-tutorial"> 不再显示
+        </label>
+        <button class="control-btn primary" onclick="closeTutorial()">开始游戏</button>
+      </div>
+    </div>
+
+    <!-- 排行榜弹窗 -->
+    <div id="leaderboard-modal" class="modal">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h2>🏆 排行榜</h2>
+          <button class="close-btn" onclick="closeLeaderboard()">×</button>
+        </div>
+        <div class="leaderboard-sort">
+          <button class="sort-btn active" onclick="sortLeaderboard('score')">按分数</button>
+          <button class="sort-btn" onclick="sortLeaderboard('time')">按时间</button>
+        </div>
+        <div class="leaderboard-list" id="leaderboard-list">
+          <!-- 排行榜项将动态生成 -->
+        </div>
+        <button class="control-btn danger" onclick="clearLeaderboard()">清空排行榜</button>
+      </div>
+    </div>
+
+    <!-- 成就弹窗 -->
+    <div id="achievements-modal" class="modal">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h2>🏅 成就</h2>
+          <button class="close-btn" onclick="closeAchievements()">×</button>
+        </div>
+        <div class="achievements-list" id="achievements-list">
+          <!-- 成就项将动态生成 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 简历弹窗 -->
+    <div id="resume-modal" class="modal">
+      <div class="modal-container resume-container">
+        <div class="modal-header">
+          <h2>📄 个人简历</h2>
+          <button class="close-btn" onclick="closeResume()">×</button>
+        </div>
+        <div class="resume-content">
+          <!-- 简历侧边栏 -->
+          <div class="resume-sidebar">
+            <div class="resume-avatar">
+              <div class="avatar-icon">👨‍💻</div>
+            </div>
+            <h3 class="resume-name">林辰宇</h3>
+            <p class="resume-title">全栈开发工程师</p>
+            
+            <div class="sidebar-section">
+              <h4>联系方式</h4>
+              <div class="contact-item">
+                <span>📧</span>
+                <span>lincy@example.com</span>
+              </div>
+              <div class="contact-item">
+                <span>📱</span>
+                <span>138-8888-8888</span>
+              </div>
+              <div class="contact-item">
+                <span>📍</span>
+                <span>中国·上海</span>
+              </div>
+            </div>
+            
+            <div class="sidebar-section">
+              <h4>技能标签</h4>
+              <div class="skill-tags">
+                <span class="skill-tag">JavaScript</span>
+                <span class="skill-tag">HTML5</span>
+                <span class="skill-tag">CSS3</span>
+                <span class="skill-tag">React</span>
+                <span class="skill-tag">Node.js</span>
+                <span class="skill-tag">Python</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 简历主内容 -->
+          <div class="resume-main">
+            <div class="main-section">
+              <h4 class="main-title">👤 个人简介</h4>
+              <p class="profile-text">拥有5年全栈开发经验，热爱技术创新，专注于构建高性能、用户友好的Web应用。具备丰富的项目经验，善于团队协作，追求代码质量与用户体验的完美平衡。对游戏开发和云计算领域有浓厚兴趣。</p>
+            </div>
+            
+            <div class="main-section">
+              <h4 class="main-title">💼 工作经历</h4>
+              <div class="timeline">
+                <div class="timeline-item">
+                  <div class="timeline-date">2022 - 至今</div>
+                  <div class="timeline-content">
+                    <h5 class="timeline-company">腾讯科技</h5>
+                    <p class="timeline-position">高级前端工程师</p>
+                    <ul class="timeline-desc">
+                      <li>负责核心产品的前端架构设计与开发</li>
+                      <li>带领团队完成多个大型项目，用户量超千万</li>
+                      <li>优化页面性能，加载速度提升40%</li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="timeline-item">
+                  <div class="timeline-date">2021 - 2022</div>
+                  <div class="timeline-content">
+                    <h5 class="timeline-company">字节跳动</h5>
+                    <p class="timeline-position">前端开发工程师</p>
+                    <ul class="timeline-desc">
+                      <li>参与抖音相关产品开发</li>
+                      <li>开发内部工具平台，提升团队效率30%</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="main-section">
+              <h4 class="main-title">🚀 项目经验</h4>
+              <div class="project-cards">
+                <div class="project-card">
+                  <div class="project-header">
+                    <h5 class="project-name">2048游戏增强版</h5>
+                    <span class="project-tag">个人项目</span>
+                  </div>
+                  <p class="project-desc">在经典2048游戏基础上添加了排行榜、成就系统、个人简历页面、分享功能、加载动画和操作教程，提供更完整的游戏体验。</p>
+                  <div class="project-tech">
+                    <span>JavaScript</span>
+                    <span>HTML5</span>
+                    <span>CSS3</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 帮助弹窗 -->
+    <div id="help-modal" class="modal">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h2>❓ 帮助</h2>
+          <button class="close-btn" onclick="closeHelp()">×</button>
+        </div>
+        <div class="help-content">
+          <h3>如何玩？</h3>
+          <p>使用键盘方向键（↑ ↓ ← →）或在屏幕上滑动来移动所有方块。当两个相同数字的方块碰撞时，它们会合并成一个！</p>
+          
+          <h3>目标</h3>
+          <p>合并方块直到获得2048方块！</p>
+          
+          <h3>技巧</h3>
+          <ul>
+            <li>把大数字固定在角落</li>
+            <li>按特定顺序排列方块</li>
+            <li>不要急于移动，先思考！</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 游戏结束弹窗 -->
+    <div id="gameover-modal" class="modal">
+      <div class="modal-container">
+        <h2>游戏结束！</h2>
+        <p class="final-score">最终分数：<span id="final-score">0</span></p>
+        <div class="name-input">
+          <input type="text" id="player-name" placeholder="输入您的名字" maxlength="20">
+        </div>
+        <div class="gameover-buttons">
+          <button class="control-btn primary" onclick="saveAndRestart()">保存并重玩</button>
+          <button class="control-btn" onclick="restartGame()">重玩</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 成就通知 -->
+    <div id="achievement-notification" class="achievement-notification">
+      <div class="notification-content">
+        <span class="notification-icon">🏅</span>
+        <div class="notification-text">
+          <div class="notification-title">成就解锁！</div>
+          <div class="notification-desc" id="achievement-desc"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="2048-script.js"></script>
+</body>
+</html>
