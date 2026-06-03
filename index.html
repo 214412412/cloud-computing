@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2048 终极版</title>
+    <link rel="stylesheet" href="2048-styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 加载画面 -->
+        <div id="loading-screen" class="screen active">
+            <div class="loading-container">
+                <h1 class="loading-title">2048</h1>
+                <div class="loading-bar">
+                    <div class="loading-progress"></div>
+                </div>
+                <p class="loading-text">正在加载游戏...</p>
+            </div>
+        </div>
+
+        <!-- 游戏主界面 -->
+        <div id="game-screen" class="screen">
+            <!-- 游戏头部 -->
+            <div class="game-header">
+                <div class="header-left">
+                    <h1>2048</h1>
+                    <div class="game-status">
+                        <span id="game-status-text">准备开始</span>
+                    </div>
+                </div>
+                <div class="score-container">
+                    <div class="score-box">
+                        <div class="score-label">分数</div>
+                        <div class="score-value" id="score">0</div>
+                    </div>
+                    <div class="score-box">
+                        <div class="score-label">最高分</div>
+                        <div class="score-value" id="best-score">0</div>
+                    </div>
+                    <div class="score-box">
+                        <div class="score-label">时间</div>
+                        <div class="score-value" id="game-time">00:00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 难度选择 -->
+            <div class="difficulty-bar">
+                <span class="difficulty-label">难度：</span>
+                <button class="difficulty-btn active" data-level="easy" onclick="setDifficulty('easy')">🍀 简单</button>
+                <button class="difficulty-btn" data-level="normal" onclick="setDifficulty('normal')">⭐ 普通</button>
+                <button class="difficulty-btn" data-level="hard" onclick="setDifficulty('hard')">🔥 困难</button>
+            </div>
+
+            <!-- 游戏控制栏 -->
+            <div class="controls-bar">
+                <button class="control-btn" id="start-btn" onclick="startGame()">▶️ 开始</button>
+                <button class="control-btn" id="pause-btn" onclick="togglePause()" disabled>⏸️ 暂停</button>
+                <button class="control-btn" onclick="restartGame()">🔄 重开</button>
+                <button class="control-btn" onclick="showLeaderboard()">🏆 排行</button>
+                <button class="control-btn" onclick="showAchievements()">🏅 成就</button>
+                <button class="control-btn" onclick="showResume()">📄 简历</button>
+            </div>
+
+            <!-- 主题切换 -->
+            <div class="theme-bar">
+                <span class="theme-label">主题：</span>
+                <button class="theme-btn active" data-theme="dark" onclick="setTheme('dark')">🌙 深色</button>
+                <button class="theme-btn" data-theme="light" onclick="setTheme('light')">☀️ 浅色</button>
+                <button class="theme-btn" data-theme="ocean" onclick="setTheme('ocean')">🌊 海洋</button>
+                <button class="theme-btn" data-theme="candy" onclick="setTheme('candy')">🍬 糖果</button>
+            </div>
+
+            <!-- 游戏网格 -->
+            <div class="game-container">
+                <div class="grid-container">
+                    <div class="grid-background"></div>
+                    <div class="tile-container" id="tile-container"></div>
+                </div>
+            </div>
+
+            <!-- 游戏说明 -->
+            <p class="game-instruction">使用方向键或滑动合并方块！</p>
+        </div>
+
+        <!-- 教程弹窗 -->
+        <div id="tutorial-modal" class="modal">
+            <div class="modal-container">
+                <h2>🎮 游戏教程</h2>
+                <div class="tutorial-content">
+                    <div class="tutorial-step active" id="tutorial-step-1">
+                        <h3>第1步：了解游戏</h3>
+                        <p>使用键盘方向键或滑动屏幕移动所有方块</p>
+                    </div>
+                    <div class="tutorial-step" id="tutorial-step-2">
+                        <h3>第2步：合并方块</h3>
+                        <p>相同数字的方块碰撞时会合并成它们的和</p>
+                    </div>
+                    <div class="tutorial-step" id="tutorial-step-3">
+                        <h3>第3步：目标</h3>
+                        <p>合并方块直到获得2048！</p>
+                    </div>
+                </div>
+                <div class="tutorial-nav">
+                    <button class="control-btn" id="prev-tutorial" onclick="prevTutorial()">上一步</button>
+                    <span class="tutorial-dots">
+                        <span class="tutorial-dot active" data-step="1"></span>
+                        <span class="tutorial-dot" data-step="2"></span>
+                        <span class="tutorial-dot" data-step="3"></span>
+                    </span>
+                    <button class="control-btn" id="next-tutorial" onclick="nextTutorial()">下一步</button>
+                </div>
+                <label class="dont-show-label">
+                    <input type="checkbox" id="dont-show-tutorial"> 不再显示
+                </label>
+                <button class="control-btn primary" onclick="closeTutorial()">开始游戏</button>
+            </div>
+        </div>
+
+        <!-- 排行榜弹窗 -->
+        <div id="leaderboard-modal" class="modal">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h2>🏆 排行榜</h2>
+                    <button class="close-btn" onclick="closeLeaderboard()">×</button>
+                </div>
+                <div class="leaderboard-sort">
+                    <button class="sort-btn active" onclick="sortLeaderboard('score')">按分数</button>
+                    <button class="sort-btn" onclick="sortLeaderboard('time')">按时间</button>
+                </div>
+                <div class="leaderboard-list" id="leaderboard-list">
+                    <!-- 排行榜项将动态生成 -->
+                </div>
+                <button class="control-btn danger" onclick="clearLeaderboard()">清空排行榜</button>
+            </div>
+        </div>
+
+        <!-- 成就弹窗 -->
+        <div id="achievements-modal" class="modal">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h2>🏅 成就</h2>
+                    <button class="close-btn" onclick="closeAchievements()">×</button>
+                </div>
+                <div class="achievements-list" id="achievements-list">
+                    <div class="achievement-item" id="achievement-2048">
+                        <div class="achievement-icon">🎯</div>
+                        <div class="achievement-info">
+                            <h4>首次通关</h4>
+                            <p>获得2048方块</p>
+                        </div>
+                        <div class="achievement-status">
+                            <span class="unlocked-badge" id="badge-2048">✓</span>
+                        </div>
+                    </div>
+                    <div class="achievement-item" id="achievement-10000">
+                        <div class="achievement-icon">⭐</div>
+                        <div class="achievement-info">
+                            <h4>满分挑战</h4>
+                            <p>获得10000分</p>
+                        </div>
+                        <div class="achievement-status">
+                            <span class="unlocked-badge" id="badge-10000">✓</span>
+                        </div>
+                    </div>
+                    <div class="achievement-item" id="achievement-speed">
+                        <div class="achievement-icon">⚡</div>
+                        <div class="achievement-info">
+                            <h4>速度之王</h4>
+                            <p>在1分钟内获得2048</p>
+                        </div>
+                        <div class="achievement-status">
+                            <span class="unlocked-badge" id="badge-speed">✓</span>
+                        </div>
+                    </div>
+                    <div class="achievement-item" id="achievement-streak">
+                        <div class="achievement-icon">🎖</div>
+                        <div class="achievement-info">
+                            <h4>坚持就是胜利</h4>
+                            <p>连续玩10局</p>
+                        </div>
+                        <div class="achievement-status">
+                            <span class="unlocked-badge" id="badge-streak">✓</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 简历弹窗 -->
+        <div id="resume-modal" class="modal">
+            <div class="modal-container resume-container">
+                <div class="modal-header">
+                    <h2>📄 个人简历</h2>
+                    <button class="close-btn" onclick="closeResume()">×</button>
+                </div>
+                <div class="resume-content">
+                    <!-- 简历侧边栏 -->
+                    <div class="resume-sidebar">
+                        <div class="resume-avatar">
+                            <div class="avatar-icon">�</div>
+                        </div>
+                        <h3 class="resume-name">林辰宇</h3>
+                        <p class="resume-title">移动端开发 | 应届毕业生</p>
+                        <div class="sidebar-section">
+                            <h4>联系方式</h4>
+                            <div class="contact-item">
+                                <span>📧</span>
+                                <span>1810017381@qq.com</span>
+                            </div>
+                            <div class="contact-item">
+                                <span>📱</span>
+                                <span>18960600195</span>
+                            </div>
+                            <div class="contact-item">
+                                <span>📍</span>
+                                <span>福建</span>
+                            </div>
+                        </div>
+                        <div class="sidebar-section">
+                            <h4>技能标签</h4>
+                            <div class="skill-tags">
+                                <span class="skill-tag">JavaScript</span>
+                                <span class="skill-tag">HTML5</span>
+                                <span class="skill-tag">CSS3</span>
+                                <span class="skill-tag">React</span>
+                                <span class="skill-tag">Node.js</span>
+                                <span class="skill-tag">Python</span>
+                            </div>
+                        </div>
+                        <div class="sidebar-section">
+                            <h4>个人链接</h4>
+                            <div class="contact-item" style="word-break: break-all;">
+                                <span>🌐</span>
+                                <span>https://214412412.github.io/cloud-computing/</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 简历主内容 -->
+                    <div class="resume-main">
+                        <div class="main-section">
+                            <h4 class="main-title">👤 个人简介</h4>
+                            <p class="profile-text">
+                                福州软件职业技术学院计算机科学与技术专业本科在读，热爱技术创新，专注于移动端开发。
+                                具备丰富的校园活动组织经验，善于团队协作，追求卓越。
+                            </p>
+                        </div>
+                        <div class="main-section">
+                            <h4 class="main-title">🎓 教育背景</h4>
+                            <div class="timeline">
+                                <div class="timeline-item">
+                                    <div class="timeline-date">2024-09 ~ 2027-06</div>
+                                    <div class="timeline-content">
+                                        <h5 class="timeline-company">福州软件职业技术学院</h5>
+                                        <p class="timeline-position">计算机科学与技术 | 本科</p>
+                                        <p style="color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-top: 0.3rem;">全日制 | 智能产业学院 | 福建</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="main-section">
+                            <h4 class="main-title">🌟 项目经验</h4>
+                            <div class="timeline">
+                                <div class="timeline-item">
+                                    <div class="timeline-content">
+                                        <h5 class="timeline-company">高效执行后勤保障</h5>
+                                        <p class="timeline-position">10+场校园活动</p>
+                                        <ul class="timeline-desc">
+                                            <li>统筹物资调度与现场布置，精准管理200+件设备运输与安置</li>
+                                            <li>实现活动物资准时到位率100%，保障活动零延误执行</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-content">
+                                        <h5 class="timeline-company">视觉宣传体系升级</h5>
+                                        <p class="timeline-position">独立设计</p>
+                                        <ul class="timeline-desc">
+                                            <li>设计15+张动态海报，优化色彩系统与信息层级</li>
+                                            <li>推动活动曝光量环比提升30%，单场最高参与人数突破500人</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-content">
+                                        <h5 class="timeline-company">标准化值班体系</h5>
+                                        <p class="timeline-position">制度建设</p>
+                                        <ul class="timeline-desc">
+                                            <li>制定值班人员操作手册6份，通过排班算法优化实现100%准时到岗率</li>
+                                            <li>获评月度优秀干事（Top 5%）</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-content">
+                                        <h5 class="timeline-company">数字化会务管理</h5>
+                                        <p class="timeline-position">系统开发</p>
+                                        <ul class="timeline-desc">
+                                            <li>开发电子签到系统替代纸质流程，单场活动签到时间从15分钟压缩至7分钟</li>
+                                            <li>效率提升53%，系统后被推广至3个院系使用</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-content">
+                                        <h5 class="timeline-company">跨学科团队攻坚</h5>
+                                        <p class="timeline-position">项目指挥</p>
+                                        <ul class="timeline-desc">
+                                            <li>指挥4人小组在48小时内完成市场分析项目</li>
+                                            <li>整合20+份行业报告形成40页专业文档，关键数据可视化模块获教授演示环节95分评分</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-content">
+                                        <h5 class="timeline-company">敏捷项目管理</h5>
+                                        <p class="timeline-position">机制建立</p>
+                                        <ul class="timeline-desc">
+                                            <li>实施每日站会+看板跟踪制度，将任务分解为35个可量化节点</li>
+                                            <li>推动项目提前6小时交付并获B+成绩（班级前25%）</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="main-section">
+                            <h4 class="main-title">� 个人成就</h4>
+                            <div class="projects-grid">
+                                <div class="project-card">
+                                    <h5>学业卓越</h5>
+                                    <p>连续8学期全勤，42门课平均分85分（专业前30%）</p>
+                                </div>
+                                <div class="project-card">
+                                    <h5>学习生态</h5>
+                                    <p>组建5人学习小组，成员平均成绩提升15%</p>
+                                </div>
+                                <div class="project-card">
+                                    <h5>经济独立</h5>
+                                    <p>3份勤工俭学岗位，月均创收4500元</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 帮助弹窗 -->
+        <div id="help-modal" class="modal">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h2>❓ 帮助</h2>
+                    <button class="close-btn" onclick="closeHelp()">×</button>
+                </div>
+                <div class="help-content">
+                    <h3>操作说明</h3>
+                    <ul>
+                        <li>⬆️ ⬇️ ⬅️ ➡️ 使用键盘方向键移动方块</li>
+                        <li>📱 在触屏设备上滑动屏幕移动</li>
+                        <li>🎯 合并相同数字的方块获得更高分数</li>
+                        <li>🏆 目标：获得2048方块</li>
+                    </ul>
+                    <h3>游戏规则</h3>
+                    <ul>
+                        <li>每次移动后会随机生成一个新方块</li>
+                        <li>相同数字的方块碰撞时会合并</li>
+                        <li>无法移动时游戏结束</li>
+                        <li>达到2048即为胜利</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分享弹窗 -->
+        <div id="share-modal" class="modal">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h2>📤 分享成绩</h2>
+                    <button class="close-btn" onclick="closeShare()">×</button>
+                </div>
+                <div class="share-content">
+                    <div class="share-score">
+                        <div class="share-label">本次得分</div>
+                        <div class="share-value" id="share-score-value">0</div>
+                    </div>
+                    <textarea id="share-textarea" readonly>我在2048游戏中获得了0分！快来挑战我吧！</textarea>
+                    <div class="share-buttons">
+                        <button class="control-btn primary" onclick="copyToClipboard()">复制文本</button>
+                        <button class="control-btn" onclick="generateScreenshot()">生成截图</button>
+                    </div>
+                    <div id="copy-success" class="success-message">✓ 已复制到剪贴板！</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 游戏结束弹窗 -->
+        <div id="game-over-modal" class="modal">
+            <div class="modal-container">
+                <h2 id="game-over-title">游戏结束</h2>
+                <div class="game-over-score">
+                    <div class="final-score-label">最终得分</div>
+                    <div class="final-score-value" id="final-score">0</div>
+                </div>
+                <div class="player-name-input">
+                    <label>输入您的昵称：</label>
+                    <input type="text" id="player-name" placeholder="请输入昵称" maxlength="10">
+                </div>
+                <div class="game-over-buttons">
+                    <button class="control-btn primary" onclick="saveScoreAndClose()">保存并分享</button>
+                    <button class="control-btn" onclick="closeGameOver()">返回主菜单</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 成就解锁弹窗 -->
+        <div id="achievement-unlock-modal" class="modal">
+            <div class="modal-container achievement-unlock-container">
+                <div class="achievement-icon-large" id="unlock-icon">🎯</div>
+                <h2 id="unlock-title">成就解锁！</h2>
+                <p id="unlock-description"></p>
+                <button class="control-btn primary" onclick="closeAchievementUnlock()">太棒了！</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="2048-game.js"></script>
+</body>
+</html>

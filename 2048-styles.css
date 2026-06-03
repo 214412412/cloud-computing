@@ -1,0 +1,954 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    color: #fff;
+}
+
+#app {
+    width: 100%;
+    min-height: 100vh;
+    position: relative;
+}
+
+/* 屏幕切换动画 */
+.screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.5s ease;
+    z-index: 1;
+}
+
+.screen.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* 加载画面 */
+#loading-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+
+.loading-container {
+    text-align: center;
+}
+
+.loading-title {
+    font-size: 4rem;
+    font-weight: bold;
+    color: #e94560;
+    text-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+    margin-bottom: 2rem;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.loading-bar {
+    width: 200px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    margin: 0 auto 1rem;
+    overflow: hidden;
+}
+
+.loading-progress {
+    height: 100%;
+    background: linear-gradient(90deg, #e94560, #0f3460);
+    border-radius: 5px;
+    animation: loading 2s ease-in-out infinite;
+}
+
+@keyframes loading {
+    0% { width: 0%; }
+    100% { width: 100%; }
+}
+
+.loading-text {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1rem;
+}
+
+/* 游戏界面 */
+#game-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+}
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 1rem;
+}
+
+.header-left {
+    display: flex;
+    flex-direction: column;
+}
+
+.game-header h1 {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #e94560;
+    text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+    margin: 0;
+}
+
+.game-status {
+    font-size: 0.8rem;
+    color: #4ade80;
+    animation: pulse-status 2s ease-in-out infinite;
+}
+
+@keyframes pulse-status {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.score-container {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.score-box {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    text-align: center;
+    min-width: 70px;
+}
+
+.score-label {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+}
+
+.score-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+/* 控制栏 */
+.controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    width: 100%;
+    max-width: 400px;
+}
+
+.control-btn {
+    background: linear-gradient(135deg, #e94560, #c73e54);
+    border: none;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.control-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+}
+
+.control-btn.primary {
+    background: linear-gradient(135deg, #0f3460, #16213e);
+}
+
+.control-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* 难度选择 */
+.difficulty-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.difficulty-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.difficulty-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.difficulty-btn.active {
+    background: linear-gradient(135deg, #e94560, #c73e54);
+    color: #fff;
+}
+
+.difficulty-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* 主题切换 */
+.theme-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.theme-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.theme-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.theme-btn.active {
+    background: linear-gradient(135deg, #0f3460, #16213e);
+    color: #fff;
+}
+
+.theme-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.control-btn.danger {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+}
+
+/* 游戏网格 */
+.game-container {
+    width: 100%;
+    max-width: 400px;
+}
+
+.grid-container {
+    position: relative;
+    width: 100%;
+    padding-top: 100%;
+}
+
+.grid-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 4%;
+}
+
+.grid-background::before {
+    content: '';
+    position: absolute;
+    top: 4%;
+    left: 4%;
+    right: 4%;
+    bottom: 4%;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 4%;
+}
+
+.grid-background::before > * {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.tile-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 4%;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 4%;
+}
+
+.tile {
+    position: relative;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    transition: all 0.15s ease;
+    animation: appear 0.2s ease;
+}
+
+@keyframes appear {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.tile-2 { background: #eee4da; color: #776e65; }
+.tile-4 { background: #ede0c8; color: #776e65; }
+.tile-8 { background: #f2b179; color: #f9f6f2; }
+.tile-16 { background: #f59563; color: #f9f6f2; }
+.tile-32 { background: #f67c5f; color: #f9f6f2; }
+.tile-64 { background: #f65e3b; color: #f9f6f2; }
+.tile-128 { background: #edcf72; color: #f9f6f2; }
+.tile-256 { background: #edcc61; color: #f9f6f2; }
+.tile-512 { background: #edc850; color: #f9f6f2; }
+.tile-1024 { background: #edc53f; color: #f9f6f2; }
+.tile-2048 { background: #edc22e; color: #f9f6f2; }
+
+.tile-128, .tile-256, .tile-512 { font-size: 1.2rem; }
+.tile-1024, .tile-2048 { font-size: 1rem; }
+
+.game-instruction {
+    margin-top: 1rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+}
+
+/* 弹窗样式 */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 100;
+    padding: 1rem;
+}
+
+.modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-container {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border-radius: 16px;
+    padding: 1.5rem;
+    max-width: 400px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.close-btn:hover {
+    color: #fff;
+}
+
+/* 教程弹窗 */
+.tutorial-content {
+    margin-bottom: 1rem;
+}
+
+.tutorial-step {
+    display: none;
+    text-align: center;
+}
+
+.tutorial-step.active {
+    display: block;
+}
+
+.tutorial-step h3 {
+    color: #e94560;
+    margin-bottom: 0.5rem;
+}
+
+.tutorial-step p {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.tutorial-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.tutorial-dots {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.tutorial-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tutorial-dot.active {
+    background: #e94560;
+}
+
+.dont-show-label {
+    display: block;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 1rem;
+    cursor: pointer;
+}
+
+/* 排行榜 */
+.leaderboard-sort {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.sort-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.sort-btn.active {
+    background: #e94560;
+    color: #fff;
+}
+
+.leaderboard-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+}
+
+.leaderboard-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.7rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.leaderboard-item:first-child {
+    background: linear-gradient(135deg, rgba(233, 69, 96, 0.2), rgba(233, 69, 96, 0.1));
+}
+
+.leaderboard-rank {
+    font-weight: bold;
+    margin-right: 1rem;
+    color: #e94560;
+}
+
+.leaderboard-name {
+    flex: 1;
+}
+
+.leaderboard-score {
+    font-weight: bold;
+    color: #fff;
+}
+
+.leaderboard-time {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* 成就 */
+.achievements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.achievement-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    opacity: 0.5;
+    filter: grayscale(1);
+}
+
+.achievement-item.unlocked {
+    opacity: 1;
+    filter: grayscale(0);
+    background: rgba(233, 69, 96, 0.1);
+}
+
+.achievement-icon {
+    font-size: 2rem;
+    margin-right: 1rem;
+}
+
+.achievement-info {
+    flex: 1;
+}
+
+.achievement-info h4 {
+    color: #fff;
+    margin-bottom: 0.2rem;
+}
+
+.achievement-info p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+}
+
+.achievement-status {
+    margin-left: auto;
+}
+
+.unlocked-badge {
+    display: none;
+    width: 24px;
+    height: 24px;
+    background: #e94560;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.8rem;
+}
+
+.achievement-item:not(.unlocked) .unlocked-badge {
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* 简历 */
+.resume-container {
+    max-width: 700px;
+    max-height: 90vh;
+}
+
+.resume-content {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.resume-sidebar {
+    width: 200px;
+    flex-shrink: 0;
+}
+
+.resume-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e94560, #0f3460);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.avatar-icon {
+    font-size: 3rem;
+}
+
+.resume-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 0.2rem;
+}
+
+.resume-title {
+    color: #e94560;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.sidebar-section {
+    margin-bottom: 1rem;
+}
+
+.sidebar-section h4 {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 0.3rem;
+}
+
+.skill-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.skill-tag {
+    background: rgba(15, 52, 96, 0.5);
+    padding: 0.3rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.resume-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.main-section {
+    margin-bottom: 1.5rem;
+}
+
+.main-title {
+    color: #e94560;
+    margin-bottom: 0.5rem;
+}
+
+.profile-text {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+    font-size: 0.9rem;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 1rem;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -1rem;
+    top: 0.3rem;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #e94560;
+}
+
+.timeline-date {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.2rem;
+}
+
+.timeline-company {
+    font-weight: bold;
+    color: #fff;
+}
+
+.timeline-position {
+    color: #e94560;
+    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+}
+
+.timeline-desc {
+    list-style: none;
+    padding-left: 0;
+}
+
+.timeline-desc li {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+    margin-bottom: 0.2rem;
+}
+
+.projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem;
+}
+
+.project-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.7rem;
+    border-radius: 8px;
+}
+
+.project-card h5 {
+    color: #fff;
+    margin-bottom: 0.3rem;
+}
+
+.project-card p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.75rem;
+}
+
+/* 帮助 */
+.help-content {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.help-content h3 {
+    color: #e94560;
+    margin-bottom: 0.5rem;
+    margin-top: 1rem;
+}
+
+.help-content ul {
+    padding-left: 1.5rem;
+}
+
+.help-content li {
+    margin-bottom: 0.3rem;
+}
+
+/* 分享 */
+.share-content {
+    text-align: center;
+}
+
+.share-score {
+    margin-bottom: 1rem;
+}
+
+.share-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.share-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #e94560;
+}
+
+#share-textarea {
+    width: 100%;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem;
+    color: #fff;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    resize: none;
+}
+
+.share-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.success-message {
+    display: none;
+    color: #28a745;
+    margin-top: 0.5rem;
+}
+
+.success-message.show {
+    display: block;
+}
+
+/* 游戏结束 */
+#game-over-title {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.game-over-score {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.final-score-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.final-score-value {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #e94560;
+}
+
+.player-name-input {
+    margin-bottom: 1rem;
+}
+
+.player-name-input label {
+    display: block;
+    margin-bottom: 0.3rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.player-name-input input {
+    width: 100%;
+    padding: 0.5rem;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.player-name-input input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.game-over-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+/* 成就解锁弹窗 */
+.achievement-unlock-container {
+    text-align: center;
+}
+
+.achievement-icon-large {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    animation: bounce 0.5s ease;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+    .game-header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .score-box {
+        padding: 0.3rem 0.7rem;
+        min-width: 55px;
+    }
+    
+    .score-value {
+        font-size: 1rem;
+    }
+    
+    .control-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+    
+    .tile {
+        font-size: 1.2rem;
+    }
+    
+    .tile-128, .tile-256, .tile-512 { font-size: 1rem; }
+    .tile-1024, .tile-2048 { font-size: 0.8rem; }
+    
+    .resume-content {
+        flex-direction: column;
+    }
+    
+    .resume-sidebar {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .resume-avatar {
+        margin: 0 auto 1rem;
+    }
+}
+
+/* 移动端滑动提示 */
+@media (hover: none) {
+    .game-instruction {
+        content: '滑动屏幕移动方块！';
+    }
+}
